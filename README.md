@@ -1,10 +1,8 @@
-# solidity-token-boilerplate
-
-Boilerplate code for creating Solidity tokens.
+# fusd-token
 
 ```
-git clone https://github.com/merchantry/solidity-token-boilerplate.git
-cd solidity-token-boilerplate
+git clone https://github.com/merchantry/fusd-token.git
+cd fusd-token
 npm install
 npm run test
 ```

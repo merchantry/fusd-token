@@ -2,21 +2,21 @@ const assert = require('assert');
 
 const contracts = require('../compile');
 
-const tokenContract = contracts['MyToken.sol'].MyToken;
+const tokenContract = contracts['FUSDToken.sol'].FUSDToken;
 
 const { deploy, getAccounts } = require('../utils/useWeb3');
 
-describe('MyToken tests', () => {
-  let accounts, MyToken;
+describe('FUSDToken tests', () => {
+  let accounts, FUSDToken;
 
   beforeEach(async () => {
     accounts = await getAccounts();
-    MyToken = await deploy(tokenContract, [], accounts[0]);
+    FUSDToken = await deploy(tokenContract, [], accounts[0]);
   });
 
-  describe('MyToken', () => {
+  describe('FUSDToken', () => {
     it('deploys successfully', () => {
-      assert.ok(MyToken.options.address);
+      assert.ok(FUSDToken.options.address);
     });
   });
 });

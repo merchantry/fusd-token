@@ -1,3 +1,1 @@
-module.exports = [
-  'MyToken.sol',
-];
+module.exports = ['debug', 'openzeppelin', 'MyToken.sol'];

@@ -11,8 +11,10 @@ const web3 = new Web3(
   })
 );
 
-const deploy = ({ abi, evm, bytecode }, args, account) =>
-  new web3.eth.Contract(abi)
+const getContractName = (evm) => evm.assembly.match(/\w+(?=\.sol)/)[0];
+
+const deploy = async ({ abi, evm, bytecode }, args, account) => {
+  const contract = await new web3.eth.Contract(abi)
     .deploy({
       data: evm ? evm.bytecode.object : bytecode,
       arguments: args,
@@ -22,8 +24,15 @@ const deploy = ({ abi, evm, bytecode }, args, account) =>
       gas: '1000000000',
     });
 
-const getDeployedContract = (abi, address) =>
-  new web3.eth.Contract(abi, address);
+  contract.options.name = getContractName(evm);
+  return contract;
+};
+
+const getDeployedContract = ({ abi, evm }, address) => {
+  const contract = new web3.eth.Contract(abi, address);
+  contract.options.name = getContractName(evm);
+  return contract;
+};
 
 const getAccounts = () => web3.eth.getAccounts();
 

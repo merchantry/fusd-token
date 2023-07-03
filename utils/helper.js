@@ -1,8 +1,8 @@
 const { formatArgs } = require('./debug');
 
 const randomInt = (min, max) => {
-  const diff = max - min;
-  return Math.ceil(Math.random() * diff) + min;
+  const diff = max - min + 1;
+  return Math.round(Math.random() * diff) + min;
 };
 
 const newArray = (length, callback) => {
@@ -17,11 +17,14 @@ const timeInSecs = () => Math.round(Date.now() / 1000);
 
 const secondsInTheFuture = (seconds) => timeInSecs() + seconds;
 
-const useMethodsOn = (contractInstance, methodArgs) => {
-  const methods = Array.isArray(methodArgs) ? methodArgs : [methodArgs];
+const runPromisesInSequence = (promiseArray) =>
+  promiseArray.reduce(
+    (p, promise, index) => p.then((prev) => promise(prev, index)),
+    Promise.resolve()
+  );
 
+const useMethodsOn = (contractInstance, methods) => {
   if (methods.length === 0) return Promise.resolve();
-  const state = {};
 
   const recursiveFunction = (methodIndex, promise) =>
     promise.then(async (previousReturnValue) => {
@@ -35,9 +38,7 @@ const useMethodsOn = (contractInstance, methodArgs) => {
         wait = null,
         then = null,
         catch: catchCallback,
-      } = typeof methods[methodIndex] === 'function'
-        ? methods[methodIndex](state)
-        : methods[methodIndex];
+      } = methods[methodIndex];
 
       if (wait) {
         const waitPromise = new Promise((resolve) => {
@@ -59,41 +60,40 @@ const useMethodsOn = (contractInstance, methodArgs) => {
           from: account,
           gas: '1000000000',
         })
-        .catch((err) => {
-          if (!catchCallback) {
-            throw new Error(
-              `Calling method ${method}${formatArgs(args)} ${err}`
-            );
-          }
-          catchCallback(Object.values(err.results)[0].reason);
-        });
+        .catch(() =>
+          contractInstance.methods[method](...args)
+            .call({ from: account })
+            .catch((err) => {
+              const reason = err.message.split(': revert ')[1];
 
-      if (onReturn) {
-        const result = onReturn(
-          await requestInstance,
-          await previousReturnValue
+              if (!catchCallback) {
+                throw new Error(
+                  `Calling method ${
+                    contractInstance.options.name
+                  } ${method}${formatArgs(args)} ${reason}`
+                );
+              }
+              catchCallback(reason);
+            })
         );
 
-        if (result !== undefined) {
-          for (const key in result) {
-            state[key] = result[key];
-          }
-        }
-      }
+      if (onReturn) onReturn(await requestInstance, await previousReturnValue);
       return recursiveFunction(methodIndex + 1, requestInstance);
     });
 
   return recursiveFunction(0, Promise.resolve());
 };
 
-const zeroOrOne = () => randomInt(0, 2) - 1;
+const useMethodOn = (contractInstance, params) =>
+  useMethodsOn(contractInstance, [params]);
+
+const zeroOrOne = () => randomInt(0, 1);
 
 const getBalanceOfUser = async (TokenContract, account) => {
-  const balance = await useMethodsOn(TokenContract, {
+  const balance = await useMethodOn(TokenContract, {
     method: 'balanceOf',
     args: [account],
     onReturn: () => {},
-    account,
   });
 
   return parseInt(balance);
@@ -116,7 +116,9 @@ module.exports = {
   randomInt,
   idsFrom,
   timeInSecs,
+  runPromisesInSequence,
   useMethodsOn,
+  useMethodOn,
   zeroOrOne,
   newArray,
   getBalanceOfUser,

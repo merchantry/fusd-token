@@ -1,10 +1,8 @@
 const assert = require('assert');
-
 const contracts = require('../compile');
+const { deploy, getAccounts } = require('../utils/useWeb3');
 
 const tokenContract = contracts['FUSDToken.sol'].FUSDToken;
-
-const { deploy, getAccounts } = require('../utils/useWeb3');
 
 describe('FUSDToken tests', () => {
   let accounts, FUSDToken;

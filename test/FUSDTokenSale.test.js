@@ -54,12 +54,15 @@ describe('FUSDTokenSale tests', () => {
   });
 
   const setUpOracle = () =>
+    // We set the value for the token symbol we are using in the tests
     useMethodOn(DIAOracleV2, {
       method: 'setValue',
       args: [`${erc20TokenSymbol}/USD`, 1 * 10 ** usdValDecimals, timeInSecs()],
       account: accounts[0],
     })
       .then(() =>
+        // We deploy the token adapter contract with the oracle and token addresses.
+        // The oracle must have a value for the token symbol we are using in the tests
         deploy(
           adapterContract,
           [DIAOracleV2.options.address, ERC20Token.options.address],
@@ -67,9 +70,13 @@ describe('FUSDTokenSale tests', () => {
         )
       )
       .then((tokenAdapter) => {
+        // We assign the adapter
         DIAOracleV2TokenAdapter = tokenAdapter;
       });
 
+  /**
+   * Generates random decimal and oracle values for each token symbol
+   */
   const generateERC20Params = () =>
     symbols.reduce((params, symbol) => {
       params[symbol] = {
@@ -79,6 +86,10 @@ describe('FUSDTokenSale tests', () => {
       return params;
     }, {});
 
+  /**
+   * Depoloys erc20 contract, sets oracle value, deploys and registers token adapter
+   * for each token in the provided params
+   */
   const setUpMultipleTokenAdapters = async (params = generateERC20Params()) => {
     const ERC20Tokens = await Promise.all(
       Object.entries(params).map(([symbol, { decimals }]) =>
@@ -92,9 +103,9 @@ describe('FUSDTokenSale tests', () => {
 
     return useMethodsOn(
       DIAOracleV2,
-      symbols.map((symbol) => ({
+      Object.entries(params).map(([symbol, { usdOracleValue }]) => ({
         method: 'setValue',
-        args: [`${symbol}/USD`, params[symbol].usdOracleValue, timeInSecs()],
+        args: [`${symbol}/USD`, usdOracleValue, timeInSecs()],
         account: accounts[0],
       }))
     )
@@ -120,6 +131,9 @@ describe('FUSDTokenSale tests', () => {
       );
   };
 
+  /**
+   * Returns the token contract and symbol from the adapter address
+   */
   const getTokenContractAndSymbolFromAdapter = async (adapterAddress) => {
     const TokenAdapter = await getDeployedContract(
       adapterContract,
@@ -158,6 +172,8 @@ describe('FUSDTokenSale tests', () => {
         )
         .then((tokenAdapterAddresses) =>
           runPromisesInSequence(
+            // For each token adapter, we get the token contract and symbol
+            // and we store it in the tokenContracts object
             tokenAdapterAddresses.map(() => async (_, i) => {
               const { Token, tokenSymbol } =
                 await getTokenContractAndSymbolFromAdapter(
@@ -171,6 +187,7 @@ describe('FUSDTokenSale tests', () => {
           useMethodsOn(
             FUSDTokenSale,
             Object.entries(tokenContracts).map(([symbol, token]) => ({
+              // We get the token price in FUSD
               method: 'tokenPriceInFUSD',
               args: [token.options.address, 1],
               onReturn: (price) => {
@@ -178,6 +195,7 @@ describe('FUSDTokenSale tests', () => {
                 const expectedPrice =
                   usdOracleValue *
                   10 ** (fusdDecimals - decimals - usdValDecimals);
+                // We caclulate the expected price in FUSD and check that it matches
                 assert.strictEqual(parseInt(price), expectedPrice);
               },
             }))
@@ -198,16 +216,16 @@ describe('FUSDTokenSale tests', () => {
 
     it('allows owner to change oracle', async () => {
       const DIAOracleV2Copy = await getNewOracleInstance();
-      const currentTime = timeInSecs();
 
       return setUpOracle()
         .then(() =>
           useMethodOn(DIAOracleV2Copy, {
+            // The oracle we want to update to must have a value for the token symbol
             method: 'setValue',
             args: [
               `${erc20TokenSymbol}/USD`,
               2 * 10 ** usdValDecimals,
-              currentTime,
+              timeInSecs(),
             ],
             account: accounts[0],
           })
@@ -215,11 +233,14 @@ describe('FUSDTokenSale tests', () => {
         .then(() =>
           useMethodsOn(DIAOracleV2TokenAdapter, [
             {
+              // Owner updates the oracle
               method: 'updateOracle',
               args: [DIAOracleV2Copy.options.address],
               account: accounts[0],
             },
             {
+              // We check that the oracle has been updated
+              // by comparing the oracle address returned by the contract
               method: 'getOracle',
               onReturn: (oracleAddress) => {
                 assert.strictEqual(
@@ -234,16 +255,20 @@ describe('FUSDTokenSale tests', () => {
     });
 
     it('allows owner to change token', async () => {
+      // The token we update to must have the same symbol as the current one
       const ERC20TokenCopy = await getNewTokenInstance(erc20TokenSymbol);
 
       return setUpOracle().then(() =>
         useMethodsOn(DIAOracleV2TokenAdapter, [
           {
+            // Owner updates the token
             method: 'updateToken',
             args: [ERC20TokenCopy.options.address],
             account: accounts[0],
           },
           {
+            // We check that the token has been updated
+            // by comparing the token address returned by the contract
             method: 'getToken',
             onReturn: (tokenAddress) => {
               assert.strictEqual(tokenAddress, ERC20TokenCopy.options.address);
@@ -262,10 +287,13 @@ describe('FUSDTokenSale tests', () => {
         [DIAOracleV2.options.address, ERC20Token.options.address],
         accounts[0]
       ).catch((error) => {
+        // On deployment we expect an error to be thrown if the oracle
+        // doesn't have a value for the token symbol
         errorRaised = true;
         assert.ok(error);
       });
 
+      // We check that the error was raised
       assert.ok(errorRaised);
     });
 
@@ -280,12 +308,15 @@ describe('FUSDTokenSale tests', () => {
             args: [ERC20TokenCopy.options.address],
             account: accounts[0],
             catch: (error) => {
+              // When updating the token, we expect an error to be thrown
+              // if the token symbol doesn't match the current one
               errorRaised = true;
               assert.strictEqual(error, 'Token adapter: invalid token symbol');
             },
           })
         )
         .then(() => {
+          // We check that the error was raised
           assert.ok(errorRaised);
         });
     });
@@ -301,12 +332,15 @@ describe('FUSDTokenSale tests', () => {
             args: [DIAOracleV2Copy.options.address],
             account: accounts[0],
             catch: (error) => {
+              // When updating the oracle, we expect an error to be thrown
+              // if the oracle doesn't have a value for the token symbol
               errorRaised = true;
               assert.strictEqual(error, 'Token adapter: invalid oracle value');
             },
           })
         )
         .then(() => {
+          // We check that the error was raised
           assert.ok(errorRaised);
         });
     });
@@ -314,9 +348,11 @@ describe('FUSDTokenSale tests', () => {
 
   describe('TokenAdapterFactory', () => {
     it('allows to add a token adapter reference', () =>
+      // We first set up the oracle
       setUpOracle().then(() =>
         useMethodsOn(FUSDTokenSale, [
           {
+            // Owner adds the token adapter
             method: 'addTokenAdapter',
             args: [DIAOracleV2TokenAdapter.options.address],
             account: accounts[0],
@@ -324,6 +360,8 @@ describe('FUSDTokenSale tests', () => {
           {
             method: 'getTokenAdapterAddresses',
             onReturn: ([tokenAdapterAddress]) => {
+              // We get an array of all token adapter addresses
+              // and check that the one we added is included
               assert.strictEqual(
                 tokenAdapterAddress,
                 DIAOracleV2TokenAdapter.options.address
@@ -338,6 +376,8 @@ describe('FUSDTokenSale tests', () => {
         useMethodOn(FUSDTokenSale, {
           method: 'getTokenSymbols',
           onReturn: (result) => {
+            // We get an array of all token symbols
+            // and check that it matches the symbols we used in the tests
             assert.deepStrictEqual(result, symbols);
           },
         })
@@ -359,6 +399,9 @@ describe('FUSDTokenSale tests', () => {
               args: [DIAOracleV2TokenAdapter.options.address],
               account: accounts[0],
               catch: (error) => {
+                // We expect an error to be thrown if we try to add
+                // a token adapter for a token symbol that already exists.
+                // There can only be one token adapter per token symbol
                 errorRaised = true;
                 assert.strictEqual(error, 'Token adapter already exists');
               },
@@ -366,14 +409,22 @@ describe('FUSDTokenSale tests', () => {
           ])
         )
         .then(() => {
+          // We check that the error was raised
           assert.ok(errorRaised);
         });
     });
   });
 
   describe('ERC20ExchangeVault', () => {
+    /**
+     * Returns an array of unique accounts with deposits
+     */
     const getAccountsWithDeposits = (userDeposits) =>
       Array.from(new Set(userDeposits.map(({ account }) => account)).values());
+
+    /**
+     * Returns an object with user deposits, accounts with deposits and token contracts
+     */
     const getUserDepositParams = (symbols) => {
       const userDeposits = symbols.flatMap((symbol) =>
         newArray(3, () => ({
@@ -389,6 +440,11 @@ describe('FUSDTokenSale tests', () => {
         tokenContracts: {},
       };
     };
+
+    /**
+     * Sets up oracles, token adapters, send user tokens and approves them for the token sale contract
+     * Users deposit tokens in the token sale contract
+     */
     const setUpUserDeposits = (userDeposits, tokenContracts = {}) => {
       const accountsWithDeposits = getAccountsWithDeposits(userDeposits);
 
@@ -480,6 +536,7 @@ describe('FUSDTokenSale tests', () => {
           useMethodsOn(
             FUSDTokenSale,
             accountsWithDeposits.map((account) => ({
+              // We get the user deposited token balances
               method: 'getUserTokenBalances',
               args: [account],
               onReturn: (result) => {
@@ -487,6 +544,16 @@ describe('FUSDTokenSale tests', () => {
                 const symbols = result[1];
 
                 symbols.forEach((s, i) => {
+                  const expectedDeposit = userDeposits
+                    .filter(
+                      ({ account: depositAccount, symbol: depositSymbol }) =>
+                        account === depositAccount && s === depositSymbol
+                    )
+                    .reduce((acc, { amount }) => acc + amount, 0);
+
+                  // We check that the total deposited token amount
+                  assert.strictEqual(deposited[i], expectedDeposit);
+                  // And we add it to the total deposited amount for this token
                   totalDeposited[s] += deposited[i];
                 });
               },
@@ -494,6 +561,8 @@ describe('FUSDTokenSale tests', () => {
           )
         )
         .then(() => {
+          // We check that the total deposited amount for each token matches
+          // the expected total deposited amount
           assert.deepStrictEqual(totalDeposited, totalToDeposit);
         })
         .then(() =>
@@ -505,6 +574,8 @@ describe('FUSDTokenSale tests', () => {
                     method: 'balanceOf',
                     args: [FUSDTokenSale.options.address],
                     onReturn: (balance) => {
+                      // We also check that the token sale contract balance
+                      // matches the expected total deposited amount
                       assert.strictEqual(
                         parseInt(balance),
                         totalToDeposit[symbol]
@@ -530,10 +601,13 @@ describe('FUSDTokenSale tests', () => {
         args: [erc20Token.options.address, 100],
         account: accounts[0],
         catch: (error) => {
+          // We expect an error to be thrown if the user tries to deposit
+          // a token that is not supported by the token sale contract
           errorRaised = true;
           assert.strictEqual(error, 'Token adapter does not exist');
         },
       }).then(() => {
+        // We check that the error was raised
         assert.ok(errorRaised);
       });
     });
@@ -541,6 +615,7 @@ describe('FUSDTokenSale tests', () => {
     it('allows users to withdraw erc20 tokens', () => {
       const { userDeposits, tokenContracts } = getUserDepositParams(symbols);
 
+      // We calculate total deposited amount per each user and token
       const totalUserDeposits = getAccountsWithDeposits(userDeposits).flatMap(
         (account) =>
           symbols
@@ -557,11 +632,13 @@ describe('FUSDTokenSale tests', () => {
             .filter(({ amount }) => amount > 0)
       );
 
+      // Each user deposits the planned amount of tokens
       return setUpUserDeposits(userDeposits, tokenContracts)
         .then(() =>
           useMethodsOn(
             FUSDTokenSale,
             userDeposits.map(({ symbol, account, amount }) => ({
+              // And then withdraws the deposited amount
               method: 'withdraw',
               args: [tokenContracts[symbol].options.address, amount],
               account,
@@ -576,6 +653,9 @@ describe('FUSDTokenSale tests', () => {
                   method: 'balanceOf',
                   args: [FUSDTokenSale.options.address],
                   onReturn: (balance) => {
+                    // We check that the token sale contract balance
+                    // is 0 after all withdrawals. As all the deposited tokens
+                    // have been withdrawn
                     assert.strictEqual(parseInt(balance), 0);
                   },
                 })
@@ -591,6 +671,7 @@ describe('FUSDTokenSale tests', () => {
                     method: 'balanceOf',
                     args: [account],
                     onReturn: (balance) => {
+                      // We check that the user balance matches the total deposited amount
                       assert.strictEqual(parseInt(balance), totalDeposit);
                     },
                   })
@@ -611,6 +692,8 @@ describe('FUSDTokenSale tests', () => {
             args: [tokenContracts[symbols[0]].options.address, 2000],
             account: accounts[0],
             catch: (error) => {
+              // We expect an error to be thrown if the user tries to withdraw
+              // more tokens than they have deposited
               errorRaised = true;
               assert.strictEqual(
                 error,
@@ -620,6 +703,7 @@ describe('FUSDTokenSale tests', () => {
           })
         )
         .then(() => {
+          // We check that the error was raised
           assert.ok(errorRaised);
         });
     });

@@ -158,50 +158,6 @@ describe('FUSDTokenSale tests', () => {
     it('deploys successfully', () => {
       assert.ok(FUSDTokenSale.options.address);
     });
-
-    it('calculates adapted token price in FUSD correctly', () => {
-      const tokenContracts = {};
-      const erc20Params = generateERC20Params();
-
-      return setUpMultipleTokenAdapters(erc20Params)
-        .then(() =>
-          useMethodOn(FUSDTokenSale, {
-            method: 'getTokenAdapterAddresses',
-            onReturn: () => {},
-          })
-        )
-        .then((tokenAdapterAddresses) =>
-          runPromisesInSequence(
-            // For each token adapter, we get the token contract and symbol
-            // and we store it in the tokenContracts object
-            tokenAdapterAddresses.map(() => async (_, i) => {
-              const { Token, tokenSymbol } =
-                await getTokenContractAndSymbolFromAdapter(
-                  tokenAdapterAddresses[i]
-                );
-              tokenContracts[tokenSymbol] = Token;
-            })
-          )
-        )
-        .then(() =>
-          useMethodsOn(
-            FUSDTokenSale,
-            Object.entries(tokenContracts).map(([symbol, token]) => ({
-              // We get the token price in FUSD
-              method: 'tokenPriceInFUSD',
-              args: [token.options.address, 1],
-              onReturn: (price) => {
-                const { decimals, usdOracleValue } = erc20Params[symbol];
-                const expectedPrice =
-                  usdOracleValue *
-                  10 ** (fusdDecimals - decimals - usdValDecimals);
-                // We caclulate the expected price in FUSD and check that it matches
-                assert.strictEqual(parseInt(price), expectedPrice);
-              },
-            }))
-          )
-        );
-    });
   });
 
   describe('DIAOracleV2TokenAdapter', () => {
@@ -706,6 +662,52 @@ describe('FUSDTokenSale tests', () => {
           // We check that the error was raised
           assert.ok(errorRaised);
         });
+    });
+  });
+
+  describe('FUSDTokenVault', () => {
+    it('calculates adapted token price in FUSD correctly', () => {
+      const tokenContracts = {};
+      const erc20Params = generateERC20Params();
+
+      return setUpMultipleTokenAdapters(erc20Params)
+        .then(() =>
+          useMethodOn(FUSDTokenSale, {
+            method: 'getTokenAdapterAddresses',
+            onReturn: () => {},
+          })
+        )
+        .then((tokenAdapterAddresses) =>
+          runPromisesInSequence(
+            // For each token adapter, we get the token contract and symbol
+            // and we store it in the tokenContracts object
+            tokenAdapterAddresses.map(() => async (_, i) => {
+              const { Token, tokenSymbol } =
+                await getTokenContractAndSymbolFromAdapter(
+                  tokenAdapterAddresses[i]
+                );
+              tokenContracts[tokenSymbol] = Token;
+            })
+          )
+        )
+        .then(() =>
+          useMethodsOn(
+            FUSDTokenSale,
+            Object.entries(tokenContracts).map(([symbol, token]) => ({
+              // We get the token price in FUSD
+              method: 'tokenPriceInFUSD',
+              args: [token.options.address, 1],
+              onReturn: (price) => {
+                const { decimals, usdOracleValue } = erc20Params[symbol];
+                const expectedPrice =
+                  usdOracleValue *
+                  10 ** (fusdDecimals - decimals - usdValDecimals);
+                // We caclulate the expected price in FUSD and check that it matches
+                assert.strictEqual(parseInt(price), expectedPrice);
+              },
+            }))
+          )
+        );
     });
   });
 });

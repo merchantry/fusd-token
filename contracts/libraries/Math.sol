@@ -6,6 +6,10 @@ library Math {
         return uint256(x >= 0 ? x : -x);
     }
 
+    /**
+     * @dev Multiplies n by 10^exponent. Exponent can be negative, in which case it will divide n
+     * by 10^|exponent|.
+     */
     function multiplyByTenPow(uint256 n, int256 exponent) internal pure returns (uint256) {
         uint256 absoluteExponent = abs(exponent);
         if (exponent < 0) {

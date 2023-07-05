@@ -26,6 +26,7 @@ const erc20TokenSymbol = 'USDC';
 const fusdDecimals = 18;
 const usdValDecimals = 8;
 const erc20TokenDecimals = 18;
+const annualInterestRateTenthPerc = 60;
 
 const symbols = ['USDT', 'USDC', 'DAI'];
 
@@ -42,7 +43,7 @@ describe('FUSDTokenSale tests', () => {
     FUSDToken = await deploy(fusdTokenContract, [], accounts[0]);
     FUSDTokenSale = await deploy(
       tokenSaleContract,
-      [FUSDToken.options.address],
+      [FUSDToken.options.address, annualInterestRateTenthPerc],
       accounts[0]
     );
     DIAOracleV2 = await deploy(oracleContract, [], accounts[0]);

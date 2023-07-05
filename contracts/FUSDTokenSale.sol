@@ -2,9 +2,13 @@
 pragma solidity ^0.8.19;
 
 import "./FUSDTokenHandler.sol";
+import "./DebtHandler.sol";
 
-contract FUSDTokenSale is FUSDTokenHandler {
-    constructor(address _fusdToken) FUSDTokenHandler(_fusdToken) Ownable(_msgSender()) {}
+contract FUSDTokenSale is FUSDTokenHandler, DebtHandler {
+    constructor(
+        address _fusdToken,
+        uint16 annualInterestRateTenthPerc
+    ) FUSDTokenHandler(_fusdToken) InterestCalculator(annualInterestRateTenthPerc) Ownable(_msgSender()) {}
 
     /**
      * temporary function to deposit ERC20 tokens

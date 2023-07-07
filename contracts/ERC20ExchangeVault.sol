@@ -8,7 +8,7 @@ import "./libraries/ERC20Utils.sol";
 abstract contract ERC20ExchangeVault is TokenAdapterFactory {
     mapping(address => mapping(bytes32 => uint256)) private userTokenBalances;
 
-    function depositToken(
+    function _depositToken(
         address user,
         address token,
         uint256 amount
@@ -17,7 +17,7 @@ abstract contract ERC20ExchangeVault is TokenAdapterFactory {
         ERC20(token).transferFrom(_msgSender(), address(this), amount);
     }
 
-    function withdrawToken(
+    function _withdrawToken(
         address user,
         address token,
         uint256 amount
@@ -57,5 +57,20 @@ abstract contract ERC20ExchangeVault is TokenAdapterFactory {
         }
 
         return (balances, symbols);
+    }
+
+    function withdrawAllUserAssetsToWithdrawable(address user, address withrawable) internal {
+        TokenAdapterInterface[] memory tokenAdapters = getTokenAdapters();
+        bytes32[] memory tokenKeys = getTokenKeys();
+
+        for (uint256 i = 0; i < tokenKeys.length; i++) {
+            uint256 tokenBalance = userTokenBalances[user][tokenKeys[i]];
+            ERC20 token = ERC20(tokenAdapters[i].getToken());
+
+            if (tokenBalance > 0) {
+                token.transfer(withrawable, tokenBalance);
+                userTokenBalances[user][tokenKeys[i]] = 0;
+            }
+        }
     }
 }

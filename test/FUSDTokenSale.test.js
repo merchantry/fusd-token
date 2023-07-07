@@ -26,11 +26,15 @@ const erc20TokenSymbol = 'USDC';
 const fusdDecimals = 18;
 const usdValDecimals = 8;
 const erc20TokenDecimals = 18;
+const annualInterestRateTenthPerc = 60;
+const minCollateralRatio = 150;
+const liquidationPenalty = 12;
 
 const symbols = ['USDT', 'USDC', 'DAI'];
 
 describe('FUSDTokenSale tests', () => {
   let accounts,
+    withdrawableAddress,
     FUSDToken,
     FUSDTokenSale,
     ERC20Token,
@@ -39,10 +43,17 @@ describe('FUSDTokenSale tests', () => {
 
   beforeEach(async () => {
     accounts = await getAccounts();
+    withdrawableAddress = accounts[8];
     FUSDToken = await deploy(fusdTokenContract, [], accounts[0]);
     FUSDTokenSale = await deploy(
       tokenSaleContract,
-      [FUSDToken.options.address],
+      [
+        FUSDToken.options.address,
+        annualInterestRateTenthPerc,
+        minCollateralRatio,
+        liquidationPenalty,
+        withdrawableAddress,
+      ],
       accounts[0]
     );
     DIAOracleV2 = await deploy(oracleContract, [], accounts[0]);
@@ -152,6 +163,74 @@ describe('FUSDTokenSale tests', () => {
     });
 
     return { Token, tokenSymbol };
+  };
+
+  /**
+   * Returns an array of unique accounts with deposits
+   */
+  const getAccountsWithDeposits = (userDeposits) =>
+    Array.from(new Set(userDeposits.map(({ account }) => account)).values());
+
+  /**
+   * Sets up oracles, token adapters, send user tokens and approves them for the token sale contract
+   */
+  const setUpUserTokens = (userTokens, tokenContracts = {}) => {
+    const accountsWithDeposits = getAccountsWithDeposits(userTokens);
+
+    return setUpMultipleTokenAdapters()
+      .then(() =>
+        useMethodOn(FUSDTokenSale, {
+          method: 'getTokenAdapterAddresses',
+          onReturn: () => {},
+        })
+      )
+      .then((tokenAdapterAddresses) =>
+        runPromisesInSequence(
+          tokenAdapterAddresses.map(() => async (_, i) => {
+            const { Token, tokenSymbol } =
+              await getTokenContractAndSymbolFromAdapter(
+                tokenAdapterAddresses[i]
+              );
+            tokenContracts[tokenSymbol] = Token;
+
+            const userTokenDeposits = accountsWithDeposits
+              .map((account) => ({
+                account,
+                amount: userTokens
+                  .filter(
+                    ({ account: depositAccount, symbol }) =>
+                      account === depositAccount && symbol === tokenSymbol
+                  )
+                  .reduce((acc, { amount }) => acc + amount, 0),
+              }))
+              .filter(({ amount }) => amount > 0);
+
+            return useMethodsOn(
+              Token,
+              userTokenDeposits.flatMap(({ amount, account }) => [
+                {
+                  method: 'mint',
+                  args: [account, amount],
+                  account: accounts[0],
+                },
+                {
+                  method: 'approve',
+                  args: [FUSDTokenSale.options.address, amount],
+                  account,
+                },
+              ])
+            );
+          })
+        )
+      )
+      .then(() =>
+        Object.fromEntries(
+          Object.entries(tokenContracts).map(([symbol, token]) => [
+            symbol,
+            token.options.address,
+          ])
+        )
+      );
   };
 
   describe('FUSDTokenSale', () => {
@@ -373,12 +452,6 @@ describe('FUSDTokenSale tests', () => {
 
   describe('ERC20ExchangeVault', () => {
     /**
-     * Returns an array of unique accounts with deposits
-     */
-    const getAccountsWithDeposits = (userDeposits) =>
-      Array.from(new Set(userDeposits.map(({ account }) => account)).values());
-
-    /**
      * Returns an object with user deposits, accounts with deposits and token contracts
      */
     const getUserDepositParams = (symbols) => {
@@ -401,74 +474,17 @@ describe('FUSDTokenSale tests', () => {
      * Sets up oracles, token adapters, send user tokens and approves them for the token sale contract
      * Users deposit tokens in the token sale contract
      */
-    const setUpUserDeposits = (userDeposits, tokenContracts = {}) => {
-      const accountsWithDeposits = getAccountsWithDeposits(userDeposits);
-
-      return setUpMultipleTokenAdapters()
-        .then(() =>
-          useMethodOn(FUSDTokenSale, {
-            method: 'getTokenAdapterAddresses',
-            onReturn: () => {},
-          })
+    const setUpUserDeposits = (userDeposits, tokenContracts = {}) =>
+      setUpUserTokens(userDeposits, tokenContracts).then((tokenAddresses) =>
+        useMethodsOn(
+          FUSDTokenSale,
+          userDeposits.map(({ symbol, amount, account }) => ({
+            method: 'depositToken',
+            args: [tokenAddresses[symbol], amount],
+            account,
+          }))
         )
-        .then((tokenAdapterAddresses) =>
-          runPromisesInSequence(
-            tokenAdapterAddresses.map(() => async (_, i) => {
-              const { Token, tokenSymbol } =
-                await getTokenContractAndSymbolFromAdapter(
-                  tokenAdapterAddresses[i]
-                );
-              tokenContracts[tokenSymbol] = Token;
-
-              const userTokenDeposits = accountsWithDeposits
-                .map((account) => ({
-                  account,
-                  amount: userDeposits
-                    .filter(
-                      ({ account: depositAccount, symbol }) =>
-                        account === depositAccount && symbol === tokenSymbol
-                    )
-                    .reduce((acc, { amount }) => acc + amount, 0),
-                }))
-                .filter(({ amount }) => amount > 0);
-
-              return useMethodsOn(
-                Token,
-                userTokenDeposits.flatMap(({ amount, account }) => [
-                  {
-                    method: 'mint',
-                    args: [account, amount],
-                    account: accounts[0],
-                  },
-                  {
-                    method: 'approve',
-                    args: [FUSDTokenSale.options.address, amount],
-                    account,
-                  },
-                ])
-              );
-            })
-          )
-        )
-        .then(() =>
-          Object.fromEntries(
-            Object.entries(tokenContracts).map(([symbol, token]) => [
-              symbol,
-              token.options.address,
-            ])
-          )
-        )
-        .then((tokenAddresses) =>
-          useMethodsOn(
-            FUSDTokenSale,
-            userDeposits.map(({ symbol, amount, account }) => ({
-              method: 'deposit',
-              args: [tokenAddresses[symbol], amount],
-              account,
-            }))
-          )
-        );
-    };
+      );
 
     it('allows users to deposit erc20 tokens', () => {
       const { userDeposits, accountsWithDeposits, tokenContracts } =
@@ -553,7 +569,7 @@ describe('FUSDTokenSale tests', () => {
       let errorRaised = false;
 
       return useMethodOn(FUSDTokenSale, {
-        method: 'deposit',
+        method: 'depositToken',
         args: [erc20Token.options.address, 100],
         account: accounts[0],
         catch: (error) => {
@@ -595,7 +611,7 @@ describe('FUSDTokenSale tests', () => {
             FUSDTokenSale,
             userDeposits.map(({ symbol, account, amount }) => ({
               // And then withdraws the deposited amount
-              method: 'withdraw',
+              method: 'withdrawToken',
               args: [tokenContracts[symbol].options.address, amount],
               account,
             }))
@@ -644,7 +660,7 @@ describe('FUSDTokenSale tests', () => {
       return setUpUserDeposits(userDeposits, tokenContracts)
         .then(() =>
           useMethodOn(FUSDTokenSale, {
-            method: 'withdraw',
+            method: 'withdrawToken',
             args: [tokenContracts[symbols[0]].options.address, 2000],
             account: accounts[0],
             catch: (error) => {
@@ -708,6 +724,95 @@ describe('FUSDTokenSale tests', () => {
             }))
           )
         );
+    });
+  });
+
+  describe('LiquidatingUserAssetsBelowLiquidationThreshold', () => {
+    const setUpUserCollateralAndLoans = (userDepositsAndLoans) =>
+      setUpUserTokens(userDepositsAndLoans)
+        .then((tokenAddresses) =>
+          useMethodOn(FUSDToken, {
+            method: 'transferOwnership',
+            args: [FUSDTokenSale.options.address],
+            account: accounts[0],
+          }).then(() => tokenAddresses)
+        )
+        .then((tokenAddresses) =>
+          useMethodsOn(
+            FUSDTokenSale,
+            userDepositsAndLoans.map(
+              ({ symbol, amount, loanAmount, account }) => ({
+                method: 'depositTokenAndBorrowFUSD',
+                args: [tokenAddresses[symbol], amount, loanAmount],
+                account,
+              })
+            )
+          )
+        );
+
+    it('returns all debtors', () => {
+      const userDepositsAndLoans = [
+        {
+          symbol: 'DAI',
+          amount: 1000,
+          loanAmount: 1000,
+          account: accounts[0],
+        },
+        {
+          symbol: 'USDC',
+          amount: 1000,
+          loanAmount: 1000,
+          account: accounts[1],
+        },
+      ];
+
+      setUpUserCollateralAndLoans(userDepositsAndLoans).then(() =>
+        useMethodOn(FUSDTokenSale, {
+          method: 'getAllDebtors',
+          onReturn: (debtors) => {
+            console.log(debtors);
+          },
+        })
+      );
+    });
+
+    it('returns current debtors', () => {
+      const userDepositsAndLoans = [
+        {
+          symbol: 'DAI',
+          amount: 1000,
+          loanAmount: 1000,
+          account: accounts[0],
+        },
+        {
+          symbol: 'USDC',
+          amount: 1000,
+          loanAmount: 1000,
+          account: accounts[1],
+        },
+      ];
+
+      setUpUserCollateralAndLoans(userDepositsAndLoans).then(() =>
+        useMethodsOn(FUSDTokenSale, [
+          {
+            method: 'payOffDebt',
+            args: [userDepositsAndLoans[0].loanAmount],
+            account: userDepositsAndLoans[0].account,
+          },
+          {
+            method: 'getAllDebtors',
+            onReturn: (debtors) => {
+              console.log('all', debtors);
+            },
+          },
+          {
+            method: 'getCurrentDebtors',
+            onReturn: (debtors) => {
+              console.log('current', debtors);
+            },
+          },
+        ])
+      );
     });
   });
 });

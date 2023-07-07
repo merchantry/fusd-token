@@ -19,6 +19,10 @@ abstract contract FUSDTokenHandler is ERC20ExchangeVault {
         fusdToken.mint(user, amount);
     }
 
+    function transferFUSD(address from, address to, uint256 amount) internal {
+        fusdToken.transferFrom(from, to, amount);
+    }
+
     /**
      * @dev Calculates the price of the token in FUSD.
      * Must provide a token with a valid adapter, otherwise reverts.

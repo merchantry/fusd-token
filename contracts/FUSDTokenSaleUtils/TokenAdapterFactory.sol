@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "./openzeppelin/token/ERC20/ERC20.sol";
-import "./TokenAdapterInterface.sol";
-import "./openzeppelin/access/Ownable.sol";
-import "./libraries/ERC20Utils.sol";
+import "../openzeppelin/token/ERC20/ERC20.sol";
+import "../openzeppelin/access/Ownable.sol";
+import "../TokenAdapterUtils/TokenAdapterInterface.sol";
+import "../libraries/ERC20Utils.sol";
 
 abstract contract TokenAdapterFactory is Ownable {
     mapping(bytes32 => TokenAdapterInterface) private tokenAdapters;

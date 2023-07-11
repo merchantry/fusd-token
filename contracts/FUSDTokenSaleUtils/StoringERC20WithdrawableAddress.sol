@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "./openzeppelin/access/Ownable.sol";
+import "../openzeppelin/access/Ownable.sol";
 
 abstract contract StoringERC20WithdrawableAddress is Ownable {
     address private erc20WithdrawableAddress;

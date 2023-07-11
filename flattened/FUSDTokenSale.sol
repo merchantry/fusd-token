@@ -126,241 +126,6 @@ abstract contract Ownable is Context {
 }
 
 
-// File contracts/InterestCalculator.sol
-
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
-
-abstract contract InterestCalculator is Ownable {
-    // Each point of annualInterestRateTenthPercent represents 0.1% of annual interest rate.
-    uint16 private annualInterestRateTenthPerc;
-    uint16 private constant MAX_INTEREST_RATE = 1000;
-
-    constructor(uint16 _annualInterestRateTenthPerc) validAnnualInterestRate(_annualInterestRateTenthPerc) {
-        annualInterestRateTenthPerc = _annualInterestRateTenthPerc;
-    }
-
-    modifier validAnnualInterestRate(uint16 _annualInterestRateTenthPerc) {
-        require(
-            0 <= _annualInterestRateTenthPerc && _annualInterestRateTenthPerc <= MAX_INTEREST_RATE,
-            "InterestCalculator: Invalid annual interest rate"
-        );
-        _;
-    }
-
-    
-    function getAnnualInterestRateTenthPerc() public view returns (uint16) {
-        return annualInterestRateTenthPerc;
-    }
-
-    /**
-     * @dev Allows the owner to set the annual interest rate.
-     * Each point of annualInterestRateTenthPercent represents 0.1% of annual interest rate.
-     * @param _annualInterestRateTenthPerc Annual interest rate in tenth percent. Must be between 0 and 1000 (0% and 100.0%).
-     */
-    function setAnnualInterestRateTenthPerc(uint16 _annualInterestRateTenthPerc)
-        public
-        onlyOwner
-        validAnnualInterestRate(_annualInterestRateTenthPerc)
-    {
-        annualInterestRateTenthPerc = _annualInterestRateTenthPerc;
-    }
-
-    function calculateInterest(
-        uint256 amount,
-        uint256 loanedAt,
-        uint256 currentTimestamp
-    ) internal view returns (uint256) {
-        uint256 timeDiff = currentTimestamp - loanedAt;
-        return (amount * timeDiff * annualInterestRateTenthPerc) / (1000 * 365 days);
-    }
-}
-
-
-// File contracts/CollateralRatioCalculator.sol
-
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
-
-abstract contract CollateralRatioCalculator is Ownable {
-    uint256 private minCollateralRatioForLoanPerc;
-    uint256 private liquidationPenaltyPerc;
-
-    constructor(uint256 _minCollateralRatioForLoanPerc, uint256 _liquidationPenaltyPerc) {
-        minCollateralRatioForLoanPerc = _minCollateralRatioForLoanPerc;
-        liquidationPenaltyPerc = _liquidationPenaltyPerc;
-    }
-
-    /**
-     * @dev Returns the minimum collateral ratio required for a loan in percentage.
-     * The user must have at least this much collateral to borrow FUSD. Also the
-     * user's collateral ratio must be at least this much after borrowing FUSD.
-     */
-    function getMinCollateralRatioForLoanPerc() public view returns (uint256) {
-        return minCollateralRatioForLoanPerc;
-    }
-
-    /**
-     * @dev Allows owner to set the minimum collateral ratio required for a loan in percentage.
-     */
-    function setMinCollateralRatioForLoanPerc(uint256 _minCollateralRatioForLoanPerc) public onlyOwner {
-        minCollateralRatioForLoanPerc = _minCollateralRatioForLoanPerc;
-    }
-
-    /**
-     * @dev Returns the liquidation penalty in percentage. The liquidation penalty
-     * is used to calculate the liquidation threshold
-     */
-    function getLiquidationPenaltyPerc() public view returns (uint256) {
-        return liquidationPenaltyPerc;
-    }
-
-    /**
-     * @dev Allows owner to set the liquidation penalty in percentage.
-     */
-    function setLiquidationPenaltyPerc(uint256 _liquidationPenaltyPerc) public onlyOwner {
-        liquidationPenaltyPerc = _liquidationPenaltyPerc;
-    }
-
-    /**
-     * @dev Returns the collateral ratio in percentage.
-     */
-    function calculateCollateralRatio(uint256 collateralWorthInFUSD, uint256 totalDebt)
-        internal
-        pure
-        returns (uint256)
-    {
-        require(totalDebt > 0, "CollateralRatioCalculator: Total debt must be greater than 0");
-
-        return (collateralWorthInFUSD * 100) / totalDebt;
-    }
-
-    /**
-     * @dev Checks if the collateral ratio is safe for a loan. If the function returns false,
-     * the user should not be allowed to borrow FUSD.
-     */
-    function isCollateralRatioSafe(uint256 collateralWorthInFUSD, uint256 totalDebt) internal view returns (bool) {
-        if (totalDebt == 0) return true;
-        return calculateCollateralRatio(collateralWorthInFUSD, totalDebt) >= minCollateralRatioForLoanPerc;
-    }
-
-    function getLiquidationThreshold() public view virtual returns (uint256) {
-        return 100 + liquidationPenaltyPerc;
-    }
-}
-
-
-// File contracts/TimeHandler.sol
-
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
-
-abstract contract TimeHandler {
-    function time() internal view returns (uint256) {
-        return block.timestamp;
-    }
-}
-
-
-// File contracts/DebtHandler.sol
-
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
-
-
-abstract contract DebtHandler is InterestCalculator, TimeHandler {
-    enum DebtAction {
-        Loan,
-        Repayment
-    }
-
-    struct DebtChange {
-        uint256 amount;
-        DebtAction action;
-        uint256 timestamp;
-    }
-
-    mapping(address => DebtChange[]) private debtChanges;
-
-    function _addLoan(
-        address user,
-        uint256 amount,
-        uint256 timestamp
-    ) internal {
-        debtChanges[user].push(DebtChange(amount, DebtAction.Loan, timestamp));
-    }
-
-    function _addRepayment(
-        address user,
-        uint256 amount,
-        uint256 timestamp
-    ) internal {
-        debtChanges[user].push(DebtChange(amount, DebtAction.Repayment, timestamp));
-    }
-
-    /**
-     * @dev Returns the debt changes for a user. The debt changes are sorted by timestamp.
-     * The change can either be a loan or a repayment.
-     */
-    function getDebtChanges(address user) public view returns (DebtChange[] memory) {
-        return debtChanges[user];
-    }
-
-    /**
-     * @dev Returns the base debt and interest for a user. The base debt is the amount
-     * of FUSD borrowed by the user. Interest is accrued each second on the base debt.
-     * Each repayment lowers the interest first and then the base debt.
-     */
-    function calculateBaseDebtAndInterest(address user) public view returns (uint256, uint256) {
-        DebtChange[] memory changes = debtChanges[user];
-        uint256 baseDebt = 0;
-        uint256 totalInterest = 0;
-        uint256 lastChangeAt;
-
-        for (uint256 i = 0; i < changes.length; i++) {
-            DebtChange memory change = changes[i];
-
-            if (baseDebt > 0) {
-                totalInterest += calculateInterest(baseDebt, lastChangeAt, change.timestamp);
-            }
-
-            lastChangeAt = change.timestamp;
-
-            if (change.action == DebtAction.Loan) {
-                baseDebt += change.amount;
-            } else if (change.action == DebtAction.Repayment) {
-                uint256 amountToDeduct = change.amount;
-
-                if (amountToDeduct >= totalInterest) {
-                    amountToDeduct -= totalInterest;
-                    totalInterest = 0;
-                } else if (totalInterest > 0) {
-                    totalInterest -= amountToDeduct;
-                    amountToDeduct = 0;
-                }
-
-                baseDebt -= amountToDeduct;
-            }
-        }
-
-        if (baseDebt > 0) {
-            totalInterest += calculateInterest(baseDebt, lastChangeAt, time());
-        }
-
-        return (baseDebt, totalInterest);
-    }
-
-    /**
-     * @dev Returns the total debt for a user. The total debt is the sum of the base debt
-     * and the interest.
-     */
-    function getTotalDebt(address user) public view returns (uint256) {
-        (uint256 base, uint256 interest) = calculateBaseDebtAndInterest(user);
-        return base + interest;
-    }
-}
-
-
 // File contracts/openzeppelin/interfaces/draft-IERC6093.sol
 
 // SPDX-License-Identifier: MIT
@@ -1036,7 +801,7 @@ library ERC20Utils {
 }
 
 
-// File contracts/TokenAdapterInterface.sol
+// File contracts/TokenAdapterUtils/TokenAdapterInterface.sol
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
@@ -1052,7 +817,7 @@ interface TokenAdapterInterface {
 }
 
 
-// File contracts/TokenAdapterFactory.sol
+// File contracts/FUSDTokenSaleUtils/TokenAdapterFactory.sol
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
@@ -1126,7 +891,7 @@ abstract contract TokenAdapterFactory is Ownable {
 }
 
 
-// File contracts/ERC20ExchangeVault.sol
+// File contracts/FUSDTokenSaleUtils/ERC20ExchangeVault.sol
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
@@ -1238,7 +1003,7 @@ library TransformUintToInt {
 }
 
 
-// File contracts/FUSDTokenHandler.sol
+// File contracts/FUSDTokenSaleUtils/FUSDTokenHandler.sol
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
@@ -1302,7 +1067,241 @@ abstract contract FUSDTokenHandler is ERC20ExchangeVault {
 }
 
 
-// File contracts/LiquidatingUserAssetsBelowLiquidationThreshold.sol
+// File contracts/FUSDTokenSaleUtils/InterestCalculator.sol
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+abstract contract InterestCalculator is Ownable {
+    // Each point of annualInterestRateTenthPercent represents 0.1% of annual interest rate.
+    uint16 private annualInterestRateTenthPerc;
+    uint16 private constant MAX_INTEREST_RATE = 1000;
+
+    constructor(uint16 _annualInterestRateTenthPerc) validAnnualInterestRate(_annualInterestRateTenthPerc) {
+        annualInterestRateTenthPerc = _annualInterestRateTenthPerc;
+    }
+
+    modifier validAnnualInterestRate(uint16 _annualInterestRateTenthPerc) {
+        require(
+            0 <= _annualInterestRateTenthPerc && _annualInterestRateTenthPerc <= MAX_INTEREST_RATE,
+            "InterestCalculator: Invalid annual interest rate"
+        );
+        _;
+    }
+
+    function getAnnualInterestRateTenthPerc() public view returns (uint16) {
+        return annualInterestRateTenthPerc;
+    }
+
+    /**
+     * @dev Allows the owner to set the annual interest rate.
+     * Each point of annualInterestRateTenthPercent represents 0.1% of annual interest rate.
+     * @param _annualInterestRateTenthPerc Annual interest rate in tenth percent. Must be between 0 and 1000 (0% and 100.0%).
+     */
+    function setAnnualInterestRateTenthPerc(uint16 _annualInterestRateTenthPerc)
+        public
+        onlyOwner
+        validAnnualInterestRate(_annualInterestRateTenthPerc)
+    {
+        annualInterestRateTenthPerc = _annualInterestRateTenthPerc;
+    }
+
+    function calculateInterest(
+        uint256 amount,
+        uint256 loanedAt,
+        uint256 currentTimestamp
+    ) internal view returns (uint256) {
+        uint256 timeDiff = currentTimestamp - loanedAt;
+        return (amount * timeDiff * annualInterestRateTenthPerc) / (1000 * 365 days);
+    }
+}
+
+
+// File contracts/FUSDTokenSaleUtils/CollateralRatioCalculator.sol
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+abstract contract CollateralRatioCalculator is Ownable {
+    uint256 private minCollateralRatioForLoanPerc;
+    uint256 private liquidationPenaltyPerc;
+
+    constructor(uint256 _minCollateralRatioForLoanPerc, uint256 _liquidationPenaltyPerc) {
+        minCollateralRatioForLoanPerc = _minCollateralRatioForLoanPerc;
+        liquidationPenaltyPerc = _liquidationPenaltyPerc;
+    }
+
+    /**
+     * @dev Returns the minimum collateral ratio required for a loan in percentage.
+     * The user must have at least this much collateral to borrow FUSD. Also the
+     * user's collateral ratio must be at least this much after borrowing FUSD.
+     */
+    function getMinCollateralRatioForLoanPerc() public view returns (uint256) {
+        return minCollateralRatioForLoanPerc;
+    }
+
+    /**
+     * @dev Allows owner to set the minimum collateral ratio required for a loan in percentage.
+     */
+    function setMinCollateralRatioForLoanPerc(uint256 _minCollateralRatioForLoanPerc) public onlyOwner {
+        minCollateralRatioForLoanPerc = _minCollateralRatioForLoanPerc;
+    }
+
+    /**
+     * @dev Returns the liquidation penalty in percentage. The liquidation penalty
+     * is used to calculate the liquidation threshold
+     */
+    function getLiquidationPenaltyPerc() public view returns (uint256) {
+        return liquidationPenaltyPerc;
+    }
+
+    /**
+     * @dev Allows owner to set the liquidation penalty in percentage.
+     */
+    function setLiquidationPenaltyPerc(uint256 _liquidationPenaltyPerc) public onlyOwner {
+        liquidationPenaltyPerc = _liquidationPenaltyPerc;
+    }
+
+    /**
+     * @dev Returns the collateral ratio in percentage.
+     */
+    function calculateCollateralRatio(uint256 collateralWorthInFUSD, uint256 totalDebt)
+        internal
+        pure
+        returns (uint256)
+    {
+        require(totalDebt > 0, "CollateralRatioCalculator: Total debt must be greater than 0");
+
+        return (collateralWorthInFUSD * 100) / totalDebt;
+    }
+
+    /**
+     * @dev Checks if the collateral ratio is safe for a loan. If the function returns false,
+     * the user should not be allowed to borrow FUSD.
+     */
+    function isCollateralRatioSafe(uint256 collateralWorthInFUSD, uint256 totalDebt) internal view returns (bool) {
+        if (totalDebt == 0) return true;
+        return calculateCollateralRatio(collateralWorthInFUSD, totalDebt) >= minCollateralRatioForLoanPerc;
+    }
+
+    function getLiquidationThreshold() public view virtual returns (uint256) {
+        return 100 + liquidationPenaltyPerc;
+    }
+}
+
+
+// File contracts/FUSDTokenSaleUtils/TimeHandler.sol
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+abstract contract TimeHandler {
+    function time() internal view returns (uint256) {
+        return block.timestamp;
+    }
+}
+
+
+// File contracts/FUSDTokenSaleUtils/DebtHandler.sol
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+
+abstract contract DebtHandler is InterestCalculator, TimeHandler {
+    enum DebtAction {
+        Loan,
+        Repayment
+    }
+
+    struct DebtChange {
+        uint256 amount;
+        DebtAction action;
+        uint256 timestamp;
+    }
+
+    mapping(address => DebtChange[]) private debtChanges;
+
+    function _addLoan(
+        address user,
+        uint256 amount,
+        uint256 timestamp
+    ) internal {
+        debtChanges[user].push(DebtChange(amount, DebtAction.Loan, timestamp));
+    }
+
+    function _addRepayment(
+        address user,
+        uint256 amount,
+        uint256 timestamp
+    ) internal {
+        debtChanges[user].push(DebtChange(amount, DebtAction.Repayment, timestamp));
+    }
+
+    /**
+     * @dev Returns the debt changes for a user. The debt changes are sorted by timestamp.
+     * The change can either be a loan or a repayment.
+     */
+    function getDebtChanges(address user) public view returns (DebtChange[] memory) {
+        return debtChanges[user];
+    }
+
+    /**
+     * @dev Returns the base debt and interest for a user. The base debt is the amount
+     * of FUSD borrowed by the user. Interest is accrued each second on the base debt.
+     * Each repayment lowers the interest first and then the base debt.
+     */
+    function calculateBaseDebtAndInterest(address user) public view returns (uint256, uint256) {
+        DebtChange[] memory changes = debtChanges[user];
+        uint256 baseDebt = 0;
+        uint256 totalInterest = 0;
+        uint256 lastChangeAt;
+
+        for (uint256 i = 0; i < changes.length; i++) {
+            DebtChange memory change = changes[i];
+
+            if (baseDebt > 0) {
+                totalInterest += calculateInterest(baseDebt, lastChangeAt, change.timestamp);
+            }
+
+            lastChangeAt = change.timestamp;
+
+            if (change.action == DebtAction.Loan) {
+                baseDebt += change.amount;
+            } else if (change.action == DebtAction.Repayment) {
+                uint256 amountToDeduct = change.amount;
+
+                if (amountToDeduct >= totalInterest) {
+                    amountToDeduct -= totalInterest;
+                    totalInterest = 0;
+                } else if (totalInterest > 0) {
+                    totalInterest -= amountToDeduct;
+                    amountToDeduct = 0;
+                }
+
+                baseDebt -= amountToDeduct;
+            }
+        }
+
+        if (baseDebt > 0) {
+            totalInterest += calculateInterest(baseDebt, lastChangeAt, time());
+        }
+
+        return (baseDebt, totalInterest);
+    }
+
+    /**
+     * @dev Returns the total debt for a user. The total debt is the sum of the base debt
+     * and the interest.
+     */
+    function getTotalDebt(address user) public view returns (uint256) {
+        (uint256 base, uint256 interest) = calculateBaseDebtAndInterest(user);
+        return base + interest;
+    }
+}
+
+
+// File contracts/FUSDTokenSaleUtils/LiquidatingUserAssetsBelowLiquidationThreshold.sol
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
@@ -1396,7 +1395,7 @@ abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler,
 }
 
 
-// File contracts/StoringERC20WithdrawableAddress.sol
+// File contracts/FUSDTokenSaleUtils/StoringERC20WithdrawableAddress.sol
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;

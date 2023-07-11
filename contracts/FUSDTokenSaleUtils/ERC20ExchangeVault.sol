@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "./FUSDToken.sol";
+import "../FUSDToken.sol";
 import "./TokenAdapterFactory.sol";
-import "./libraries/ERC20Utils.sol";
+import "../libraries/ERC20Utils.sol";
 
 abstract contract ERC20ExchangeVault is TokenAdapterFactory {
     mapping(address => mapping(bytes32 => uint256)) private userTokenBalances;

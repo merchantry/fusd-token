@@ -828,7 +828,7 @@ library ERC20Utils {
 }
 
 
-// File contracts/TokenAdapter.sol
+// File contracts/TokenAdapterUtils/TokenAdapter.sol
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
@@ -854,7 +854,7 @@ abstract contract TokenAdapter {
 }
 
 
-// File contracts/TokenAdapterInterface.sol
+// File contracts/TokenAdapterUtils/TokenAdapterInterface.sol
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;

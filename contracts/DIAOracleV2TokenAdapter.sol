@@ -4,8 +4,8 @@ pragma solidity ^0.8.19;
 import "./openzeppelin/token/ERC20/ERC20.sol";
 import "./openzeppelin/access/Ownable.sol";
 import "./oracles/DIAOracleV2.sol";
-import "./TokenAdapterInterface.sol";
-import "./TokenAdapter.sol";
+import "./TokenAdapterUtils/TokenAdapterInterface.sol";
+import "./TokenAdapterUtils/TokenAdapter.sol";
 
 contract DIAOracleV2TokenAdapter is Ownable, TokenAdapter, TokenAdapterInterface {
     DIAOracleV2 private oracle;

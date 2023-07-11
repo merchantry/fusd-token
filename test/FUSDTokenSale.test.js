@@ -17,7 +17,7 @@ const {
   mapObject,
 } = require('../utils/helper');
 
-const erc20TokenContract = contracts['test/ERC20Token.sol'].ERC20Token;
+const erc20TokenContract = contracts['ERC20Token.sol'].ERC20Token;
 const fusdTokenContract = contracts['FUSDToken.sol'].FUSDToken;
 const tokenSaleContract = contracts['FUSDTokenSale.sol'].FUSDTokenSale;
 const adapterContract =

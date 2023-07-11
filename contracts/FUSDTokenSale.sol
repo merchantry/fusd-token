@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "./FUSDTokenHandler.sol";
-import "./LiquidatingUserAssetsBelowLiquidationThreshold.sol";
-import "./StoringERC20WithdrawableAddress.sol";
+import "./FUSDTokenSaleUtils/FUSDTokenHandler.sol";
+import "./FUSDTokenSaleUtils/LiquidatingUserAssetsBelowLiquidationThreshold.sol";
+import "./FUSDTokenSaleUtils/StoringERC20WithdrawableAddress.sol";
 
 contract FUSDTokenSale is
     FUSDTokenHandler,

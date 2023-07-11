@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "./openzeppelin/access/Ownable.sol";
+import "../openzeppelin/access/Ownable.sol";
 
 abstract contract InterestCalculator is Ownable {
     // Each point of annualInterestRateTenthPercent represents 0.1% of annual interest rate.
@@ -20,7 +20,6 @@ abstract contract InterestCalculator is Ownable {
         _;
     }
 
-    
     function getAnnualInterestRateTenthPerc() public view returns (uint16) {
         return annualInterestRateTenthPerc;
     }

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "./FUSDToken.sol";
+import "../FUSDToken.sol";
 import "./ERC20ExchangeVault.sol";
-import "./libraries/Math.sol";
-import "./libraries/TransformUintToInt.sol";
+import "../libraries/Math.sol";
+import "../libraries/TransformUintToInt.sol";
 
 abstract contract FUSDTokenHandler is ERC20ExchangeVault {
     using TransformUintToInt for uint8;

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "../openzeppelin/token/ERC20/ERC20.sol";
-import "../openzeppelin/access/Ownable.sol";
+import "./openzeppelin/token/ERC20/ERC20.sol";
+import "./openzeppelin/access/Ownable.sol";
 
 contract ERC20Token is ERC20, Ownable {
     uint8 private _decimals;

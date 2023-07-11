@@ -13,12 +13,14 @@
     "web3": "^1.6.1"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-config-standard": "^16.0.3",
     "eslint-plugin-import": "^2.25.4",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^5.2.0",
+    "hardhat": "^2.16.1",
     "mocha": "^9.1.3",
     "prettier": "^2.5.1",
     "prettier-plugin-solidity": "^1.0.0-beta.19"
@@ -26,7 +28,8 @@
   "scripts": {
     "test": "mocha --timeout 150000",
     "prettier": "prettier --write contracts/*.sol",
-    "lint": "eslint --fix --ext .js,.test.js"
+    "lint": "eslint --fix --ext .js,.test.js",
+    "flatten": "npx hardhat flatten contracts/FUSDTokenSale.sol > flattened/FUSDTokenSale.sol && npx hardhat flatten contracts/FUSDToken.sol > flattened/FUSDToken.sol && npx hardhat flatten contracts/DIAOracleV2TokenAdapter.sol > flattened/DIAOracleV2TokenAdapter.sol&& npx hardhat flatten contracts/test/ERC20Token.sol > flattened/ERC20Token.sol&& npx hardhat flatten contracts/oracles/DIAOracleV2.sol > flattened/DIAOracleV2.sol"
   },
   "author": "",
   "license": "ISC"

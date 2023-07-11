@@ -18,35 +18,52 @@ abstract contract DebtHandler is InterestCalculator, TimeHandler {
 
     mapping(address => DebtChange[]) private debtChanges;
 
-    function _addLoan(address user, uint256 amount, uint256 timestamp) internal {
+    function _addLoan(
+        address user,
+        uint256 amount,
+        uint256 timestamp
+    ) internal {
         debtChanges[user].push(DebtChange(amount, DebtAction.Loan, timestamp));
     }
 
-    function _addRepayment(address user, uint256 amount, uint256 timestamp) internal {
+    function _addRepayment(
+        address user,
+        uint256 amount,
+        uint256 timestamp
+    ) internal {
         debtChanges[user].push(DebtChange(amount, DebtAction.Repayment, timestamp));
     }
 
+    /**
+     * @dev Returns the debt changes for a user. The debt changes are sorted by timestamp.
+     * The change can either be a loan or a repayment.
+     */
     function getDebtChanges(address user) public view returns (DebtChange[] memory) {
         return debtChanges[user];
     }
 
-    function calculateTotalLoanAndInterest(address user) public view returns (uint256, uint256) {
+    /**
+     * @dev Returns the base debt and interest for a user. The base debt is the amount
+     * of FUSD borrowed by the user. Interest is accrued each second on the base debt.
+     * Each repayment lowers the interest first and then the base debt.
+     */
+    function calculateBaseDebtAndInterest(address user) public view returns (uint256, uint256) {
         DebtChange[] memory changes = debtChanges[user];
-        uint256 totalLoan = 0;
+        uint256 baseDebt = 0;
         uint256 totalInterest = 0;
         uint256 lastChangeAt;
 
         for (uint256 i = 0; i < changes.length; i++) {
             DebtChange memory change = changes[i];
 
-            if (totalLoan > 0) {
-                totalInterest += calculateInterest(totalLoan, lastChangeAt, change.timestamp);
+            if (baseDebt > 0) {
+                totalInterest += calculateInterest(baseDebt, lastChangeAt, change.timestamp);
             }
 
             lastChangeAt = change.timestamp;
 
             if (change.action == DebtAction.Loan) {
-                totalLoan += change.amount;
+                baseDebt += change.amount;
             } else if (change.action == DebtAction.Repayment) {
                 uint256 amountToDeduct = change.amount;
 
@@ -58,14 +75,23 @@ abstract contract DebtHandler is InterestCalculator, TimeHandler {
                     amountToDeduct = 0;
                 }
 
-                totalLoan -= amountToDeduct;
+                baseDebt -= amountToDeduct;
             }
         }
 
-        if (totalLoan > 0) {
-            totalInterest += calculateInterest(totalLoan, lastChangeAt, time());
+        if (baseDebt > 0) {
+            totalInterest += calculateInterest(baseDebt, lastChangeAt, time());
         }
 
-        return (totalLoan, totalInterest);
+        return (baseDebt, totalInterest);
+    }
+
+    /**
+     * @dev Returns the total debt for a user. The total debt is the sum of the base debt
+     * and the interest.
+     */
+    function getTotalDebt(address user) public view returns (uint256) {
+        (uint256 base, uint256 interest) = calculateBaseDebtAndInterest(user);
+        return base + interest;
     }
 }

@@ -1,7 +1,7 @@
 const assert = require('assert');
 const contracts = require('../compile');
 const { deploy, getAccounts } = require('../utils/useWeb3');
-const { useMethodsOn } = require('../utils/helper');
+const { useMethodsOn, timeInSecs } = require('../utils/helper');
 
 const oracleContract = contracts['oracles/DIAOracleV2.sol'].DIAOracleV2;
 
@@ -21,8 +21,8 @@ describe('DIAOracleV2 tests', () => {
       assert.ok(DIAOracleV2.options.address);
     });
 
-    it('allows the owner to update the oracle value', async () => {
-      const currentTime = Math.floor(Date.now() / 1000);
+    it('allows owner to update the oracle value', async () => {
+      const currentTime = timeInSecs();
 
       return useMethodsOn(DIAOracleV2, [
         {

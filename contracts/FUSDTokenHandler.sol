@@ -19,6 +19,14 @@ abstract contract FUSDTokenHandler is ERC20ExchangeVault {
         fusdToken.mint(user, amount);
     }
 
+    function transferFUSD(
+        address from,
+        address to,
+        uint256 amount
+    ) internal {
+        fusdToken.transferFrom(from, to, amount);
+    }
+
     /**
      * @dev Calculates the price of the token in FUSD.
      * Must provide a token with a valid adapter, otherwise reverts.
@@ -34,6 +42,11 @@ abstract contract FUSDTokenHandler is ERC20ExchangeVault {
         return Math.multiplyByTenPow(amount * priceInUsd, fusdDecimals - usdPriceDecimals - tokenDecimals);
     }
 
+    /**
+     * @dev Returns the total worth of all collateral tokens currently deposited by the user
+     * in FUSD. The worth of each token is calculated using the token's price in FUSD.
+     * @param user Address of the user to calculate the collateral worth for
+     */
     function getUserCollateralWorthInFUSD(address user) public view returns (uint256) {
         TokenAdapterInterface[] memory tokenAdapters = getTokenAdapters();
         bytes32[] memory tokenKeys = getTokenKeys();

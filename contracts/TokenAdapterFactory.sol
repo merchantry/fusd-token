@@ -64,7 +64,6 @@ abstract contract TokenAdapterFactory is Ownable {
 
     /**
      * @dev Returns symbols of all registered tokens.
-     * Th
      */
     function getTokenSymbols() public view returns (string[] memory) {
         string[] memory symbols = new string[](tokenKeys.length);

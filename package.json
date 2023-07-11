@@ -29,7 +29,7 @@
     "test": "mocha --timeout 150000",
     "prettier": "prettier --write contracts/*.sol",
     "lint": "eslint --fix --ext .js,.test.js",
-    "flatten": "npx hardhat flatten contracts/FUSDTokenSale.sol > flattened/FUSDTokenSale.sol && npx hardhat flatten contracts/FUSDToken.sol > flattened/FUSDToken.sol && npx hardhat flatten contracts/DIAOracleV2TokenAdapter.sol > flattened/DIAOracleV2TokenAdapter.sol&& npx hardhat flatten contracts/test/ERC20Token.sol > flattened/ERC20Token.sol&& npx hardhat flatten contracts/oracles/DIAOracleV2.sol > flattened/DIAOracleV2.sol"
+    "flatten": "flatten.sh"
   },
   "author": "",
   "license": "ISC"

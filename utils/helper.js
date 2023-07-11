@@ -1,9 +1,11 @@
 const { formatArgs } = require('./debug');
 
 const randomInt = (min, max) => {
-  const diff = max - min + 1;
+  const diff = max - min;
   return Math.round(Math.random() * diff) + min;
 };
+
+const randomElement = (array) => array[randomInt(0, array.length - 1)];
 
 const newArray = (length, callback) => {
   const array = [];
@@ -87,6 +89,18 @@ const useMethodsOn = (contractInstance, methods) => {
 const useMethodOn = (contractInstance, params) =>
   useMethodsOn(contractInstance, [params]);
 
+const getContractEvents = async (contractInstance, eventName = 'allEvents') =>
+  contractInstance.getPastEvents(eventName).then((events) =>
+    events.map(({ event, returnValues }) => ({
+      event,
+      data: Object.entries(returnValues).reduce((data, [key, value]) => {
+        if (/^\d*$/.test(key)) return data;
+        data[key] = value;
+        return data;
+      }, {}),
+    }))
+  );
+
 const zeroOrOne = () => randomInt(0, 1);
 
 const getBalanceOfUser = async (TokenContract, account) => {
@@ -111,18 +125,26 @@ const valuesWithinPercentage = (value1, value2, percentage) => {
   return diff <= maxDiff;
 };
 
+const mapObject = (object, callback) =>
+  Object.fromEntries(
+    Object.entries(object).map(([key, value]) => [key, callback(value)])
+  );
+
 module.exports = {
   secondsInTheFuture,
   randomInt,
+  randomElement,
   idsFrom,
   timeInSecs,
   runPromisesInSequence,
   useMethodsOn,
   useMethodOn,
+  getContractEvents,
   zeroOrOne,
   newArray,
   getBalanceOfUser,
   valuesWithin,
   getTaxFunction,
   valuesWithinPercentage,
+  mapObject,
 };

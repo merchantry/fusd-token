@@ -34,10 +34,19 @@ abstract contract DebtHandler is InterestCalculator, TimeHandler {
         debtChanges[user].push(DebtChange(amount, DebtAction.Repayment, timestamp));
     }
 
+    /**
+     * @dev Returns the debt changes for a user. The debt changes are sorted by timestamp.
+     * The change can either be a loan or a repayment.
+     */
     function getDebtChanges(address user) public view returns (DebtChange[] memory) {
         return debtChanges[user];
     }
 
+    /**
+     * @dev Returns the base debt and interest for a user. The base debt is the amount
+     * of FUSD borrowed by the user. Interest is accrued each second on the base debt.
+     * Each repayment lowers the interest first and then the base debt.
+     */
     function calculateBaseDebtAndInterest(address user) public view returns (uint256, uint256) {
         DebtChange[] memory changes = debtChanges[user];
         uint256 baseDebt = 0;
@@ -77,6 +86,10 @@ abstract contract DebtHandler is InterestCalculator, TimeHandler {
         return (baseDebt, totalInterest);
     }
 
+    /**
+     * @dev Returns the total debt for a user. The total debt is the sum of the base debt
+     * and the interest.
+     */
     function getTotalDebt(address user) public view returns (uint256) {
         (uint256 base, uint256 interest) = calculateBaseDebtAndInterest(user);
         return base + interest;

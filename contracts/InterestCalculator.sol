@@ -20,6 +20,10 @@ abstract contract InterestCalculator is Ownable {
         _;
     }
 
+    /**
+     * @dev Returns the annual interest rate in tenth percent.
+     * Each point of annualInterestRateTenthPercent represents 0.1% of annual interest rate.
+     */
     function getAnnualInterestRateTenthPerc() public view returns (uint16) {
         return annualInterestRateTenthPerc;
     }

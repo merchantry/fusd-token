@@ -8,6 +8,10 @@ abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler,
     mapping(address => bool) private debtorRegistered;
     address[] private debtors;
 
+    /**
+     * @dev Returns the liquidation threshold in percentage. If the collateral ratio
+     * of a user is below this threshold, the user will be liquidated.
+     */
     function getLiquidationThreshold() public view override returns (uint256) {
         uint256 interestRatePerc = getAnnualInterestRateTenthPerc() / 10;
         return super.getLiquidationThreshold() + interestRatePerc;
@@ -20,10 +24,16 @@ abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler,
         debtorRegistered[debtor] = true;
     }
 
+    /**
+     * @dev Returns all users who have ever borrowed FUSD at some point.
+     */
     function getAllDebtors() public view returns (address[] memory) {
         return debtors;
     }
 
+    /**
+     * @dev Returns all users who have outstanding debt.
+     */
     function getCurrentDebtors() public view returns (address[] memory) {
         address[] memory allDebtors = getAllDebtors();
         address[] memory currentDebtors = new address[](allDebtors.length);
@@ -43,6 +53,10 @@ abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler,
         return currentDebtors;
     }
 
+    /**
+     * @dev Returns all users who have outstanding debt and are below the liquidation threshold.
+     * All users who are below the liquidation threshold will be liquidated.
+     */
     function getDebtorsBelowLiquidationThreshold() public view returns (address[] memory) {
         address[] memory allDebtors = getAllDebtors();
         address[] memory debtorsBelowLiquidationThreshold = new address[](allDebtors.length);
@@ -62,6 +76,9 @@ abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler,
         return debtorsBelowLiquidationThreshold;
     }
 
+    /**
+     * @dev Allows the owner to liquidate all users who are below the liquidation threshold.
+     */
     function liquidateAllDebtorsBelowLiquidationThreshold() public onlyOwner {
         address[] memory debtorsBelowLiquidationThreshold = getDebtorsBelowLiquidationThreshold();
         for (uint256 i = 0; i < debtorsBelowLiquidationThreshold.length; i++) {

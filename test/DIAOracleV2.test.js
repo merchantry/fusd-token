@@ -1,7 +1,8 @@
 const assert = require('assert');
 const contracts = require('../compile');
 const { deploy, getAccounts } = require('../utils/useWeb3');
-const { useMethodsOn, timeInSecs } = require('../utils/helper');
+const { timeInSecs } = require('../utils/helper');
+const { useMethodsOn } = require('../utils/contracts');
 
 const oracleContract = contracts['oracles/DIAOracleV2.sol'].DIAOracleV2;
 

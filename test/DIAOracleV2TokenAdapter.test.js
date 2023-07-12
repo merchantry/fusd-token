@@ -1,7 +1,8 @@
 const assert = require('assert');
 const contracts = require('../compile');
 const { deploy, getAccounts } = require('../utils/useWeb3');
-const { useMethodsOn, timeInSecs, useMethodOn } = require('../utils/helper');
+const { timeInSecs } = require('../utils/helper');
+const { useMethodsOn, useMethodOn } = require('../utils/contracts');
 
 const erc20TokenContract = contracts['ERC20Token.sol'].ERC20Token;
 const adapterContract =

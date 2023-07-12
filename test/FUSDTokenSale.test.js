@@ -6,16 +6,18 @@ const {
   getDeployedContract,
 } = require('../utils/useWeb3');
 const {
-  useMethodsOn,
   timeInSecs,
   randomInt,
   newArray,
   runPromisesInSequence,
-  useMethodOn,
   randomElement,
-  getContractEvents,
   mapObject,
 } = require('../utils/helper');
+const {
+  useMethodsOn,
+  useMethodOn,
+  getContractEvents,
+} = require('../utils/contracts');
 
 const erc20TokenContract = contracts['ERC20Token.sol'].ERC20Token;
 const fusdTokenContract = contracts['FUSDToken.sol'].FUSDToken;
@@ -432,7 +434,7 @@ describe('FUSDTokenSale tests', () => {
       );
     });
 
-    it('throws error if user to borrow FUSD and make collateral ratio unsafe', () => {
+    it('throws error if user tries to borrow FUSD and make collateral ratio unsafe', () => {
       // We deposit 150 USDT and borrow 100 FUSD, which makes our collateral ratio
       // right on the edge of being unsafe. We expect an error to be thrown if we
       // try to borrow more FUSD and make our collateral ratio unsafe

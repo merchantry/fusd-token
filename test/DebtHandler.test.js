@@ -1,7 +1,8 @@
 const assert = require('assert');
 const contracts = require('../compile');
 const { deploy, getAccounts } = require('../utils/useWeb3');
-const { useMethodsOn, timeInSecs, useMethodOn } = require('../utils/helper');
+const { timeInSecs } = require('../utils/helper');
+const { useMethodsOn, useMethodOn } = require('../utils/contracts');
 
 const debtHandlerContract =
   contracts['test/DebtHandlerTestContract.sol'].DebtHandlerTestContract;

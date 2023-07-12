@@ -7,7 +7,7 @@ pragma solidity ^0.8.19;
 
 library StringUtils {
     function compare(string memory a, string memory b) internal pure returns (bool) {
-        return (keccak256(bytes(a)) == keccak256(bytes(b)));
+        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
     }
 }
 
@@ -886,7 +886,7 @@ interface TokenAdapterInterface {
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
-contract DIAOracleV2wTLOSTokenAdapter is Ownable, TokenAdapter, TokenAdapterInterface {
+contract DIAOracleV2wTLOSAdapter is Ownable, TokenAdapter, TokenAdapterInterface {
     DIAOracleV2 private oracle;
 
     constructor(address _oracle, address token)
@@ -896,7 +896,7 @@ contract DIAOracleV2wTLOSTokenAdapter is Ownable, TokenAdapter, TokenAdapterInte
     {
         oracle = DIAOracleV2(_oracle);
         string memory tokenSymbol = ERC20(token).symbol();
-        require(StringUtils.compare(tokenSymbol, "TLOS"), "Token adapter: invalid token symbol");
+        require(StringUtils.compare(tokenSymbol, "wTLOS"), "Token adapter: invalid token symbol");
     }
 
     modifier oracleTracksToken(address _oracle, address token) {

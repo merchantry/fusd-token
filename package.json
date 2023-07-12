@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "ganache": "^7.8.0",
+    "node-cron": "^3.0.2",
     "solc": "^0.8.20",
     "truffle-hdwallet-provider": "^1.0.17",
     "web3": "^1.6.1"
@@ -29,7 +30,8 @@
     "test": "mocha --timeout 150000",
     "prettier": "prettier --write contracts/*.sol",
     "lint": "eslint --fix --ext .js,.test.js",
-    "flatten": "flatten.sh"
+    "flatten": "flatten.sh",
+    "cron-job": "node node/app.js"
   },
   "author": "",
   "license": "ISC"

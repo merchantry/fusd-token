@@ -18,7 +18,7 @@ contract DIAOracleV2wTLOSAdapter is Ownable, TokenAdapter, TokenAdapterInterface
     {
         oracle = DIAOracleV2(_oracle);
         string memory tokenSymbol = ERC20(token).symbol();
-        require(StringUtils.compare(tokenSymbol, "TLOS"), "Token adapter: invalid token symbol");
+        require(StringUtils.compare(tokenSymbol, "wTLOS"), "Token adapter: invalid token symbol");
     }
 
     modifier oracleTracksToken(address _oracle, address token) {

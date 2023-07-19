@@ -46,8 +46,8 @@ describe('Cron job tests', () => {
       });
     });
 
-    it('calls isReady method', () => {
-      return new Promise((resolve) => {
+    it('calls isReady method', () =>
+      new Promise((resolve) => {
         const job = schedule(everySecond, async () => {
           const time = timeInSecs();
           const value = await useMethodOn(TimerTestContract, {
@@ -63,11 +63,10 @@ describe('Cron job tests', () => {
           job.stop();
           resolve();
         }, (secondsToWait + 1) * 1000);
-      });
-    });
+      }));
 
-    it('calls setAction method if isReady returns true', () => {
-      return new Promise((resolve) => {
+    it('calls setAction method if isReady returns true', () =>
+      new Promise((resolve) => {
         const job = schedule(everySecond, async () => {
           const time = timeInSecs();
           const value = await useMethodOn(TimerTestContract, {
@@ -93,7 +92,6 @@ describe('Cron job tests', () => {
           job.stop();
           resolve();
         }, (secondsToWait + 1) * 1000);
-      });
-    });
+      }));
   });
 });

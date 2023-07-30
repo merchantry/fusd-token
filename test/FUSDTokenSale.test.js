@@ -31,9 +31,9 @@ const erc20TokenSymbol = 'USDC';
 const fusdDecimals = 18;
 const usdValDecimals = 8;
 const erc20TokenDecimals = 18;
-const annualInterestRate = 8;
-const minCollateralRatio = 150;
-const liquidationPenalty = 12;
+const annualInterestRate = 8 * 10;
+const minCollateralRatio = 150 * 10;
+const liquidationPenalty = 12 * 10;
 
 const symbols = ['USDT', 'USDC', 'DAI'];
 
@@ -54,7 +54,7 @@ describe('FUSDTokenSale tests', () => {
       tokenSaleContract,
       [
         FUSDToken.options.address,
-        annualInterestRate * 10, // In the contract the annual interest rate is represented by tenths of a percent (1 = 0.1%)
+        annualInterestRate, // In the contract the annual interest rate is represented by tenths of a percent (1 = 0.1%)
         minCollateralRatio,
         liquidationPenalty,
         withdrawableAddress,
@@ -645,7 +645,7 @@ describe('FUSDTokenSale tests', () => {
     it('returns liquidation penalty', () =>
       useMethodOn(FUSDTokenSale, {
         // We get the liquidation penalty
-        method: 'getLiquidationPenaltyPerc',
+        method: 'getLiquidationPenaltyTenthPerc',
         onReturn: (lp) => {
           // and check that it matches the one we set on deployment
           assert.strictEqual(parseInt(lp), liquidationPenalty);
@@ -679,13 +679,13 @@ describe('FUSDTokenSale tests', () => {
       return useMethodsOn(FUSDTokenSale, [
         {
           // Owner updates the liquidation penalty
-          method: 'setLiquidationPenaltyPerc',
+          method: 'setLiquidationPenaltyTenthPerc',
           args: [newLP],
           account: accounts[0],
         },
         {
           // We check that the liquidation penalty has been updated...
-          method: 'getLiquidationPenaltyPerc',
+          method: 'getLiquidationPenaltyTenthPerc',
           onReturn: (lp) => {
             // ...correctly
             assert.strictEqual(parseInt(lp), newLP);
@@ -1139,7 +1139,7 @@ describe('FUSDTokenSale tests', () => {
           // and check that it matches the one we set on deployment
           assert.strictEqual(
             parseInt(lt),
-            100 + liquidationPenalty + annualInterestRate
+            1000 + liquidationPenalty + annualInterestRate
           );
         },
       }));
@@ -1317,7 +1317,7 @@ describe('FUSDTokenSale tests', () => {
               args: [accounts[1]],
               onReturn: (collateralRatio) => {
                 // Initially 1 USDT = 1 USD, so collateral ratio is 150%
-                assert.strictEqual(parseInt(collateralRatio), 150);
+                assert.strictEqual(parseInt(collateralRatio), 150 * 10);
               },
             },
             {
@@ -1353,7 +1353,7 @@ describe('FUSDTokenSale tests', () => {
                         onReturn: (collateralRatio) => {
                           assert.strictEqual(
                             parseInt(collateralRatio),
-                            expectedCR
+                            expectedCR * 10
                           );
                         },
                       },

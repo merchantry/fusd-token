@@ -1123,12 +1123,12 @@ abstract contract InterestCalculator is Ownable {
 pragma solidity ^0.8.19;
 
 abstract contract CollateralRatioCalculator is Ownable {
-    uint256 private minCollateralRatioForLoanPerc;
-    uint256 private liquidationPenaltyPerc;
+    uint256 private minCollateralRatioForLoanTenthPerc;
+    uint256 private liquidationPenaltyTenthPerc;
 
-    constructor(uint256 _minCollateralRatioForLoanPerc, uint256 _liquidationPenaltyPerc) {
-        minCollateralRatioForLoanPerc = _minCollateralRatioForLoanPerc;
-        liquidationPenaltyPerc = _liquidationPenaltyPerc;
+    constructor(uint256 _minCollateralRatioForLoanTenthPerc, uint256 _liquidationPenaltyTenthPerc) {
+        minCollateralRatioForLoanTenthPerc = _minCollateralRatioForLoanTenthPerc;
+        liquidationPenaltyTenthPerc = _liquidationPenaltyTenthPerc;
     }
 
     /**
@@ -1137,29 +1137,29 @@ abstract contract CollateralRatioCalculator is Ownable {
      * user's collateral ratio must be at least this much after borrowing FUSD.
      */
     function getMinCollateralRatioForLoanPerc() public view returns (uint256) {
-        return minCollateralRatioForLoanPerc;
+        return minCollateralRatioForLoanTenthPerc;
     }
 
     /**
      * @dev Allows owner to set the minimum collateral ratio required for a loan in percentage.
      */
-    function setMinCollateralRatioForLoanPerc(uint256 _minCollateralRatioForLoanPerc) public onlyOwner {
-        minCollateralRatioForLoanPerc = _minCollateralRatioForLoanPerc;
+    function setMinCollateralRatioForLoanPerc(uint256 _minCollateralRatioForLoanTenthPerc) public onlyOwner {
+        minCollateralRatioForLoanTenthPerc = _minCollateralRatioForLoanTenthPerc;
     }
 
     /**
      * @dev Returns the liquidation penalty in percentage. The liquidation penalty
      * is used to calculate the liquidation threshold
      */
-    function getLiquidationPenaltyPerc() public view returns (uint256) {
-        return liquidationPenaltyPerc;
+    function getLiquidationPenaltyTenthPerc() public view returns (uint256) {
+        return liquidationPenaltyTenthPerc;
     }
 
     /**
      * @dev Allows owner to set the liquidation penalty in percentage.
      */
-    function setLiquidationPenaltyPerc(uint256 _liquidationPenaltyPerc) public onlyOwner {
-        liquidationPenaltyPerc = _liquidationPenaltyPerc;
+    function setLiquidationPenaltyTenthPerc(uint256 _liquidationPenaltyTenthPerc) public onlyOwner {
+        liquidationPenaltyTenthPerc = _liquidationPenaltyTenthPerc;
     }
 
     /**
@@ -1181,11 +1181,11 @@ abstract contract CollateralRatioCalculator is Ownable {
      */
     function isCollateralRatioSafe(uint256 collateralWorthInFUSD, uint256 totalDebt) internal view returns (bool) {
         if (totalDebt == 0) return true;
-        return calculateCollateralRatio(collateralWorthInFUSD, totalDebt) >= minCollateralRatioForLoanPerc;
+        return calculateCollateralRatio(collateralWorthInFUSD, totalDebt) >= minCollateralRatioForLoanTenthPerc;
     }
 
     function getLiquidationThreshold() public view virtual returns (uint256) {
-        return 100 + liquidationPenaltyPerc;
+        return 100 + liquidationPenaltyTenthPerc;
     }
 }
 
@@ -1438,13 +1438,13 @@ contract FUSDTokenSale is
     constructor(
         address _fusdToken,
         uint16 annualInterestRateTenthPerc,
-        uint256 minCollateralRatioForLoanPerc,
-        uint256 liquidationPenaltyPerc,
+        uint256 minCollateralRatioForLoanTenthPerc,
+        uint256 liquidationPenaltyTenthPerc,
         address erc20WithdrawableAddress
     )
         FUSDTokenHandler(_fusdToken)
         InterestCalculator(annualInterestRateTenthPerc)
-        CollateralRatioCalculator(minCollateralRatioForLoanPerc, liquidationPenaltyPerc)
+        CollateralRatioCalculator(minCollateralRatioForLoanTenthPerc, liquidationPenaltyTenthPerc)
         StoringERC20WithdrawableAddress(erc20WithdrawableAddress)
         Ownable(_msgSender())
     {}

@@ -13,7 +13,7 @@ abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler,
      * of a user is below this threshold, the user will be liquidated.
      */
     function getLiquidationThreshold() public view override returns (uint256) {
-        uint256 interestRatePerc = getAnnualInterestRateTenthPerc() / 10;
+        uint256 interestRatePerc = getAnnualInterestRateTenthPerc();
         return super.getLiquidationThreshold() + interestRatePerc;
     }
 

@@ -15,13 +15,13 @@ contract FUSDTokenSale is
     constructor(
         address _fusdToken,
         uint16 annualInterestRateTenthPerc,
-        uint256 minCollateralRatioForLoanPerc,
-        uint256 liquidationPenaltyPerc,
+        uint256 minCollateralRatioForLoanTenthPerc,
+        uint256 liquidationPenaltyTenthPerc,
         address erc20WithdrawableAddress
     )
         FUSDTokenHandler(_fusdToken)
         InterestCalculator(annualInterestRateTenthPerc)
-        CollateralRatioCalculator(minCollateralRatioForLoanPerc, liquidationPenaltyPerc)
+        CollateralRatioCalculator(minCollateralRatioForLoanTenthPerc, liquidationPenaltyTenthPerc)
         StoringERC20WithdrawableAddress(erc20WithdrawableAddress)
         Ownable(_msgSender())
     {}

@@ -275,10 +275,10 @@ describe('FUSDTokenSale tests', () => {
     setUpUserTokens(userDepositsAndLoans, tokenContracts, erc20Params)
       .then((tokenAddresses) =>
         useMethodOn(FUSDToken, {
-          // We must transfer the ownership of the FUSD token to the token sale contract
-          // so that the token sale contract can mint FUSD for users as the owner
-          method: 'transferOwnership',
-          args: [FUSDTokenSale.options.address],
+          // The owner sets the token sale contract as a minter
+          // so it can mint FUSD for users
+          method: 'setIsMinter',
+          args: [FUSDTokenSale.options.address, true],
           account: accounts[0],
         }).then(() => tokenAddresses)
       )

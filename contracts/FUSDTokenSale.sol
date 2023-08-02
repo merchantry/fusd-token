@@ -26,6 +26,14 @@ contract FUSDTokenSale is
         Ownable(_msgSender())
     {}
 
+    modifier collateralRatioSafe(address user) {
+        _;
+        require(
+            isCollateralRatioSafe(getUserCollateralWorthInFUSD(user), getTotalDebt(user)),
+            "FUSDTokenSale: collateral ratio is unsafe"
+        );
+    }
+
     function depositTokenAndBorrowFUSD(
         address token,
         uint256 amount,
@@ -41,12 +49,11 @@ contract FUSDTokenSale is
      * the transaction reverts.
      * @param amount Amount of FUSD to borrow
      */
-    function borrowFUSD(uint256 amount) public {
+    function borrowFUSD(uint256 amount) public collateralRatioSafe(_msgSender()) {
         address user = _msgSender();
+
         _addLoan(user, amount, time());
         registerDebtor(user);
-
-        revertIfCollateralRatioUnsafe(user);
         mintFUSD(user, amount);
     }
 
@@ -91,17 +98,8 @@ contract FUSDTokenSale is
      * @param token Address of the token to withdraw
      * @param amount Amount of the token to withdraw
      */
-    function withdrawToken(address token, uint256 amount) public {
-        address user = _msgSender();
-        _withdrawToken(user, token, amount);
-        revertIfCollateralRatioUnsafe(user);
-    }
-
-    function revertIfCollateralRatioUnsafe(address user) internal view {
-        require(
-            isCollateralRatioSafe(getUserCollateralWorthInFUSD(user), getTotalDebt(user)),
-            "FUSDTokenSale: collateral ratio is unsafe"
-        );
+    function withdrawToken(address token, uint256 amount) public collateralRatioSafe(_msgSender()) {
+        _withdrawToken(_msgSender(), token, amount);
     }
 
     /**

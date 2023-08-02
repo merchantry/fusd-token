@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import "../openzeppelin/access/Ownable.sol";
 
-abstract contract InterestCalculator is Ownable {
+abstract contract InterestCalculator {
     // Each point of annualInterestRateTenthPercent represents 0.1% of annual interest rate.
     uint16 private annualInterestRateTenthPerc;
     uint16 private constant MAX_INTEREST_RATE = 1000;
@@ -24,14 +24,9 @@ abstract contract InterestCalculator is Ownable {
         return annualInterestRateTenthPerc;
     }
 
-    /**
-     * @dev Allows the owner to set the annual interest rate.
-     * Each point of annualInterestRateTenthPercent represents 0.1% of annual interest rate.
-     * @param _annualInterestRateTenthPerc Annual interest rate in tenth percent. Must be between 0 and 1000 (0% and 100.0%).
-     */
     function setAnnualInterestRateTenthPerc(uint16 _annualInterestRateTenthPerc)
         public
-        onlyOwner
+        virtual
         validAnnualInterestRate(_annualInterestRateTenthPerc)
     {
         annualInterestRateTenthPerc = _annualInterestRateTenthPerc;

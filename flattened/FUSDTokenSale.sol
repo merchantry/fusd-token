@@ -1136,14 +1136,14 @@ abstract contract CollateralRatioCalculator is Ownable {
      * The user must have at least this much collateral to borrow FUSD. Also the
      * user's collateral ratio must be at least this much after borrowing FUSD.
      */
-    function getMinCollateralRatioForLoanPerc() public view returns (uint256) {
+    function getMinCollateralRatioForLoanTenthPerc() public view returns (uint256) {
         return minCollateralRatioForLoanTenthPerc;
     }
 
     /**
      * @dev Allows owner to set the minimum collateral ratio required for a loan in percentage.
      */
-    function setMinCollateralRatioForLoanPerc(uint256 _minCollateralRatioForLoanTenthPerc) public onlyOwner {
+    function setMinCollateralRatioForLoanTenthPerc(uint256 _minCollateralRatioForLoanTenthPerc) public onlyOwner {
         minCollateralRatioForLoanTenthPerc = _minCollateralRatioForLoanTenthPerc;
     }
 
@@ -1316,7 +1316,7 @@ abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler,
      * of a user is below this threshold, the user will be liquidated.
      */
     function getLiquidationThreshold() public view override returns (uint256) {
-        uint256 interestRatePerc = getAnnualInterestRateTenthPerc() / 10;
+        uint256 interestRatePerc = getAnnualInterestRateTenthPerc();
         return super.getLiquidationThreshold() + interestRatePerc;
     }
 

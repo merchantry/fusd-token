@@ -4,17 +4,17 @@ pragma solidity ^0.8.19;
 import "./DebtHandler.sol";
 import "./CollateralRatioCalculator.sol";
 
-abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler, CollateralRatioCalculator {
+abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler, CollateralRatioCalculator, Ownable {
     mapping(address => bool) private debtorRegistered;
     address[] private debtors;
 
     /**
      * @dev Returns the liquidation threshold in percentage. If the collateral ratio
      * of a user is below this threshold, the user will be liquidated.
+     * @return {uint256} liquidation threshold in percentage in 0.1%.
      */
     function getLiquidationThreshold() public view override returns (uint256) {
-        uint256 interestRatePerc = getAnnualInterestRateTenthPerc();
-        return super.getLiquidationThreshold() + interestRatePerc;
+        return super.getLiquidationThreshold() + getAnnualInterestRateTenthPerc();
     }
 
     function registerDebtor(address debtor) internal {

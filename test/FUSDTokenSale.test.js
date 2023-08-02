@@ -597,6 +597,125 @@ describe('FUSDTokenSale tests', () => {
           assert.ok(errorRaised);
         });
     });
+
+    describe('throws error if min collateral ratio is lower than liquidation threshold', async () => {
+      const expectedError =
+        'FUSDTokenSale: Liquidation threshold must be below minimum collateral ratio';
+
+      it('on deployment', async () => {
+        let errorRaised = false;
+
+        await deploy(
+          tokenSaleContract,
+          [
+            FUSDToken.options.address,
+            annualInterestRate, // In the contract the annual interest rate is represented by tenths of a percent (1 = 0.1%)
+            100 * 10, // min collateral ratio
+            12 * 10, // liquidation penalty
+            withdrawableAddress,
+          ],
+          accounts[0]
+        ).catch((error) => {
+          // We expect an error to be thrown if the min collateral ratio is lower than
+          // the liquidation threshold on deployment
+          errorRaised = true;
+          assert.ok(error);
+        });
+
+        // We check that the error was raised
+        assert.ok(errorRaised);
+      });
+
+      it('on updating min collateral ratio', async () => {
+        let errorRaised = false;
+
+        return useMethodOn(FUSDTokenSale, {
+          // LT 100.0% + 8.0% + 12.0% = 120.0%
+          // Min CR 100.0%
+          method: 'setMinCollateralRatioForLoanTenthPerc',
+          args: [100 * 10],
+          account: accounts[0],
+          catch: (error) => {
+            errorRaised = true;
+            assert.strictEqual(error, expectedError);
+          },
+        }).then(() => {
+          // We check that the error was raised
+          assert.ok(errorRaised);
+        });
+      });
+
+      it('on updating annual interest rate', async () => {
+        let errorRaised = false;
+
+        return useMethodsOn(FUSDTokenSale, [
+          {
+            // LT 100.0% + 50.0% + 12.0% = 162.0%
+            // Min CR 150.0%
+            method: 'setAnnualInterestRateTenthPerc',
+            args: [50 * 10],
+            account: accounts[0],
+            catch: (error) => {
+              errorRaised = true;
+              assert.strictEqual(error, expectedError);
+            },
+          },
+        ]).then(() => {
+          // We check that the error was raised
+          assert.ok(errorRaised);
+        });
+      });
+
+      it('on updating liquidation penalty', async () => {
+        let errorRaised = false;
+
+        return useMethodsOn(FUSDTokenSale, [
+          {
+            // LT 100.0% + 8.0% + 50.0% = 158.0%
+            // Min CR 150.0%
+            method: 'setLiquidationPenaltyTenthPerc',
+            args: [50 * 10],
+            account: accounts[0],
+            catch: (error) => {
+              errorRaised = true;
+              assert.strictEqual(error, expectedError);
+            },
+          },
+        ]).then(() => {
+          // We check that the error was raised
+          assert.ok(errorRaised);
+        });
+      });
+    });
+
+    it('throws error if non owner tries to update CR params', async () => {
+      let errorsRaised = 0;
+      const methods = [
+        'setMinCollateralRatioForLoanTenthPerc',
+        'setLiquidationPenaltyTenthPerc',
+        'setAnnualInterestRateTenthPerc',
+      ];
+
+      return useMethodsOn(
+        FUSDTokenSale,
+        methods.map((method) => ({
+          method,
+          args: [100 * 10],
+          account: accounts[1],
+          catch: (_, data) => {
+            assert.strictEqual(
+              data.slice(0, 32),
+              // OwnableUnauthorizedAccount error
+              '0x118cdaa70000000000000000000000'
+            );
+            errorsRaised++;
+          },
+        }))
+      ).then(() => {
+        // We check that the error was raised
+        assert.strictEqual(errorsRaised, methods.length);
+      });
+    });
   });
 
   describe('StoringERC20WithdrawableAddress', () => {
@@ -635,7 +754,7 @@ describe('FUSDTokenSale tests', () => {
     it('returns minimum collateral ratio for loan', () =>
       useMethodOn(FUSDTokenSale, {
         // We get the minimum collateral ratio for loan
-        method: 'getMinCollateralRatioForLoanPerc',
+        method: 'getMinCollateralRatioForLoanTenthPerc',
         onReturn: (minCR) => {
           // and check that it matches the one we set on deployment
           assert.strictEqual(parseInt(minCR), minCollateralRatio);
@@ -653,18 +772,18 @@ describe('FUSDTokenSale tests', () => {
       }));
 
     it('allows owner to update minimum collateral ratio for loan', () => {
-      const newMinCR = 200;
+      const newMinCR = 200 * 10;
 
       return useMethodsOn(FUSDTokenSale, [
         {
           // Owner updates the minimum collateral ratio for loan
-          method: 'setMinCollateralRatioForLoanPerc',
+          method: 'setMinCollateralRatioForLoanTenthPerc',
           args: [newMinCR],
           account: accounts[0],
         },
         {
           // We check that the minimum collateral ratio for loan has been updated...
-          method: 'getMinCollateralRatioForLoanPerc',
+          method: 'getMinCollateralRatioForLoanTenthPerc',
           onReturn: (minCR) => {
             // ...correctly
             assert.strictEqual(parseInt(minCR), newMinCR);
@@ -674,7 +793,7 @@ describe('FUSDTokenSale tests', () => {
     });
 
     it('allows owner to update liquidation penalty', () => {
-      const newLP = 20;
+      const newLP = 20 * 10;
 
       return useMethodsOn(FUSDTokenSale, [
         {

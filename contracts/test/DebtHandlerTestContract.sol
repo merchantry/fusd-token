@@ -4,10 +4,7 @@ pragma solidity ^0.8.19;
 import "../FUSDTokenSaleUtils/DebtHandler.sol";
 
 contract DebtHandlerTestContract is DebtHandler {
-    constructor(uint16 _annualInterestRateTenthPerc)
-        InterestCalculator(_annualInterestRateTenthPerc)
-        Ownable(_msgSender())
-    {}
+    constructor(uint16 _annualInterestRateTenthPerc) InterestCalculator(_annualInterestRateTenthPerc) {}
 
     function addLoan(
         address user,

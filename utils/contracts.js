@@ -50,7 +50,7 @@ const useMethodsOn = (contractInstance, methods) => {
                   } ${method}${formatArgs(args)} ${reason}`
                 );
               }
-              catchCallback(reason);
+              catchCallback(reason, err.data);
             })
         );
 

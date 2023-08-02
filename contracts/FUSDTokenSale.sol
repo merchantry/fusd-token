@@ -24,7 +24,20 @@ contract FUSDTokenSale is
         CollateralRatioCalculator(minCollateralRatioForLoanTenthPerc, liquidationPenaltyTenthPerc)
         StoringERC20WithdrawableAddress(erc20WithdrawableAddress)
         Ownable(_msgSender())
+        LTIsBelowMinCR(annualInterestRateTenthPerc, liquidationPenaltyTenthPerc, minCollateralRatioForLoanTenthPerc)
     {}
+
+    modifier LTIsBelowMinCR(
+        uint256 annualInterestRateTenthPerc,
+        uint256 liquidationPenaltyTenthPerc,
+        uint256 minCollateralRatioForLoanTenthPerc
+    ) {
+        require(
+            1000 + liquidationPenaltyTenthPerc + annualInterestRateTenthPerc < minCollateralRatioForLoanTenthPerc,
+            "FUSDTokenSale: Liquidation threshold must be below minimum collateral ratio"
+        );
+        _;
+    }
 
     modifier collateralRatioSafe(address user) {
         _;
@@ -135,5 +148,58 @@ contract FUSDTokenSale is
 
         withdrawAllUserAssetsToWithdrawable(user, erc20WithdrawableAddress);
         _addRepayment(user, totalDebt, time());
+    }
+
+    /**
+     * @dev Allows owner to set the minimum collateral ratio required for a loan in 0.1%.
+     * The minimum collateral ratio must be below the liquidation threshold.
+     */
+    function setMinCollateralRatioForLoanTenthPerc(uint256 _minCollateralRatioForLoanTenthPerc)
+        public
+        override
+        onlyOwner
+        LTIsBelowMinCR(
+            getAnnualInterestRateTenthPerc(),
+            getLiquidationPenaltyTenthPerc(),
+            _minCollateralRatioForLoanTenthPerc
+        )
+    {
+        super.setMinCollateralRatioForLoanTenthPerc(_minCollateralRatioForLoanTenthPerc);
+    }
+
+    /**
+     * @dev Allows owner to set the liquidation penalty in 0.1%.
+     * The resulting liquidation penalty must be below the minimum collateral ratio.
+     */
+    function setLiquidationPenaltyTenthPerc(uint256 _liquidationPenaltyTenthPerc)
+        public
+        override
+        onlyOwner
+        LTIsBelowMinCR(
+            getAnnualInterestRateTenthPerc(),
+            _liquidationPenaltyTenthPerc,
+            getMinCollateralRatioForLoanTenthPerc()
+        )
+    {
+        super.setLiquidationPenaltyTenthPerc(_liquidationPenaltyTenthPerc);
+    }
+
+    /**
+     * @dev Allows the owner to set the annual interest rate.
+     * Each point of annualInterestRateTenthPercent represents 0.1% of annual interest rate.
+     * The resulting liquidation penalty must be below the minimum collateral ratio.
+     * @param _annualInterestRateTenthPerc Annual interest rate in tenth percent. Must be between 0 and 1000 (0% and 100.0%).
+     */
+    function setAnnualInterestRateTenthPerc(uint16 _annualInterestRateTenthPerc)
+        public
+        override
+        onlyOwner
+        LTIsBelowMinCR(
+            _annualInterestRateTenthPerc,
+            getLiquidationPenaltyTenthPerc(),
+            getMinCollateralRatioForLoanTenthPerc()
+        )
+    {
+        super.setAnnualInterestRateTenthPerc(_annualInterestRateTenthPerc);
     }
 }

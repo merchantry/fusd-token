@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import "./InterestCalculator.sol";
 
-abstract contract CollateralRatioCalculator is Ownable {
+abstract contract CollateralRatioCalculator {
     uint256 private minCollateralRatioForLoanTenthPerc;
     uint256 private liquidationPenaltyTenthPerc;
 
@@ -17,14 +17,11 @@ abstract contract CollateralRatioCalculator is Ownable {
      * The user must have at least this much collateral to borrow FUSD. Also the
      * user's collateral ratio must be at least this much after borrowing FUSD.
      */
-    function getMinCollateralRatioForLoanPerc() public view returns (uint256) {
+    function getMinCollateralRatioForLoanTenthPerc() public view returns (uint256) {
         return minCollateralRatioForLoanTenthPerc;
     }
 
-    /**
-     * @dev Allows owner to set the minimum collateral ratio required for a loan in percentage.
-     */
-    function setMinCollateralRatioForLoanPerc(uint256 _minCollateralRatioForLoanTenthPerc) public onlyOwner {
+    function setMinCollateralRatioForLoanTenthPerc(uint256 _minCollateralRatioForLoanTenthPerc) public virtual {
         minCollateralRatioForLoanTenthPerc = _minCollateralRatioForLoanTenthPerc;
     }
 
@@ -36,10 +33,7 @@ abstract contract CollateralRatioCalculator is Ownable {
         return liquidationPenaltyTenthPerc;
     }
 
-    /**
-     * @dev Allows owner to set the liquidation penalty in 0.1%.
-     */
-    function setLiquidationPenaltyTenthPerc(uint256 _liquidationPenaltyTenthPerc) public onlyOwner {
+    function setLiquidationPenaltyTenthPerc(uint256 _liquidationPenaltyTenthPerc) public virtual {
         liquidationPenaltyTenthPerc = _liquidationPenaltyTenthPerc;
     }
 

@@ -705,7 +705,7 @@ describe('FUSDTokenSale tests', () => {
           catch: (_, data) => {
             assert.strictEqual(
               data.slice(0, 32),
-              // OwnableUnauthorizedAccount error
+              // OwnableUnauthorizedAccount error signature
               '0x118cdaa70000000000000000000000'
             );
             errorsRaised++;

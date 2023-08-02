@@ -202,4 +202,38 @@ contract FUSDTokenSale is
     {
         super.setAnnualInterestRateTenthPerc(_annualInterestRateTenthPerc);
     }
+
+    /**
+     * @dev Returns the maximum amount of FUSD the user can borrow. If the user falls
+     * below the minimum collateral ratio, returns 0.
+     * @param user Address of the user
+     */
+    function calculateMaxFUSDToBorrow(address user) public view returns (uint256) {
+        uint256 collateralWorthInFUSD = getUserCollateralWorthInFUSD(user);
+        uint256 totalDebt = getTotalDebt(user);
+        uint256 minCollateralRatio = getMinCollateralRatioForLoanTenthPerc();
+
+        uint256 totalAllowedToBorrow = (collateralWorthInFUSD * 1000) / minCollateralRatio;
+
+        if (totalAllowedToBorrow <= totalDebt) return 0;
+
+        return totalAllowedToBorrow - totalDebt;
+    }
+
+    /**
+     * @dev Returns the maximum amount of collateral the user can withdraw. If the user falls
+     * below the minimum collateral ratio, returns 0.
+     * @param user Address of the user
+     */
+    function calculateMaxCollateralToWithdraw(address user) public view returns (uint256) {
+        uint256 collateralWorthInFUSD = getUserCollateralWorthInFUSD(user);
+        uint256 totalDebt = getTotalDebt(user);
+        uint256 minCollateralRatio = getMinCollateralRatioForLoanTenthPerc();
+
+        uint256 totalAllowedToWithdraw = (totalDebt * minCollateralRatio) / 1000;
+
+        if (totalAllowedToWithdraw >= collateralWorthInFUSD) return 0;
+
+        return collateralWorthInFUSD - totalAllowedToWithdraw;
+    }
 }

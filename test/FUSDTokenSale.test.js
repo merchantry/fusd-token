@@ -598,6 +598,200 @@ describe('FUSDTokenSale tests', () => {
         });
     });
 
+    it('throws error if non owner tries to update CR params', async () => {
+      let errorsRaised = 0;
+      const methods = [
+        'setMinCollateralRatioForLoanTenthPerc',
+        'setLiquidationPenaltyTenthPerc',
+        'setAnnualInterestRateTenthPerc',
+      ];
+
+      return useMethodsOn(
+        FUSDTokenSale,
+        methods.map((method) => ({
+          method,
+          args: [100 * 10],
+          account: accounts[1],
+          catch: (_, data) => {
+            assert.strictEqual(
+              data.slice(0, 32),
+              // OwnableUnauthorizedAccount error signature
+              '0x118cdaa70000000000000000000000'
+            );
+            errorsRaised++;
+          },
+        }))
+      ).then(() => {
+        // We check that the error was raised
+        assert.strictEqual(errorsRaised, methods.length);
+      });
+    });
+
+    it('calculates max FUSD to borrow', () => {
+      const symbol = 'USDT';
+
+      const userDepositParams = [
+        {
+          deposit: 1500,
+          loan: 1000,
+          expectedMaxFUSDToBorrow: 0,
+        },
+        {
+          deposit: 1500,
+          loan: 500,
+          expectedMaxFUSDToBorrow: 500,
+        },
+        {
+          deposit: 3000,
+          loan: 500,
+          expectedMaxFUSDToBorrow: 1500,
+        },
+        {
+          deposit: 3000,
+          loan: 1666,
+          expectedMaxFUSDToBorrow: 334,
+        },
+      ].map(({ deposit, loan, ...rest }, i) => ({
+        symbol,
+        amount: deposit,
+        loanAmount: loan,
+        account: accounts[i + 1],
+        ...rest,
+      }));
+      const erc20Params = {
+        [symbol]: {
+          decimals: 18,
+          usdOracleValue: 1 * 10 ** usdValDecimals,
+        },
+      };
+
+      return setUpUserCollateralAndLoans(userDepositParams, {}, erc20Params)
+        .then(() =>
+          useMethodsOn(
+            FUSDTokenSale,
+            userDepositParams.map(({ account, expectedMaxFUSDToBorrow }) => ({
+              // For each user we calculate the max FUSD they can borrow
+              method: 'calculateMaxFUSDToBorrow',
+              args: [account],
+              onReturn: (maxFUSDToBorrow) => {
+                // and check that the value matches the expected value
+                assert.strictEqual(
+                  parseInt(maxFUSDToBorrow),
+                  expectedMaxFUSDToBorrow
+                );
+              },
+            }))
+          )
+        )
+        .then(() =>
+          useMethodOn(DIAOracleV2, {
+            // We simulate a dramatic price drop for the token
+            // so the user falls below the min collateral ratio
+            method: 'setValue',
+            args: [
+              `${symbol}/USD`,
+              0.0001 * 10 ** usdValDecimals,
+              timeInSecs(),
+            ],
+            account: accounts[0],
+          })
+        )
+        .then(() =>
+          useMethodOn(FUSDTokenSale, {
+            // We calculate the max FUSD to borrow for the user
+            method: 'calculateMaxFUSDToBorrow',
+            args: [accounts[1]],
+            onReturn: (maxCollateralToWithdraw) => {
+              // and check that the value is 0
+              assert.strictEqual(parseInt(maxCollateralToWithdraw), 0);
+            },
+          })
+        );
+    });
+
+    it('calculates max collateral to withdraw', () => {
+      const symbol = 'USDT';
+
+      const userDepositParams = [
+        {
+          deposit: 1500,
+          loan: 1000,
+          expectedMaxCollateralToWithdraw: 0,
+        },
+        {
+          deposit: 1500,
+          loan: 500,
+          expectedMaxCollateralToWithdraw: 750,
+        },
+        {
+          deposit: 800,
+          loan: 500,
+          expectedMaxCollateralToWithdraw: 50,
+        },
+        {
+          deposit: 3000,
+          loan: 1400,
+          expectedMaxCollateralToWithdraw: 900,
+        },
+      ].map(({ deposit, loan, ...rest }, i) => ({
+        symbol,
+        amount: deposit,
+        loanAmount: loan,
+        account: accounts[i + 1],
+        ...rest,
+      }));
+      const erc20Params = {
+        [symbol]: {
+          decimals: 18,
+          usdOracleValue: 1 * 10 ** usdValDecimals,
+        },
+      };
+
+      return setUpUserCollateralAndLoans(userDepositParams, {}, erc20Params)
+        .then(() =>
+          useMethodsOn(
+            FUSDTokenSale,
+            userDepositParams.map(
+              ({ account, expectedMaxCollateralToWithdraw }) => ({
+                // For each user we calculate the max collateral they can withdraw
+                method: 'calculateMaxCollateralToWithdraw',
+                args: [account],
+                onReturn: (maxCollateralToWithdraw) => {
+                  assert.strictEqual(
+                    parseInt(maxCollateralToWithdraw),
+                    expectedMaxCollateralToWithdraw
+                  );
+                },
+              })
+            )
+          )
+        )
+        .then(() =>
+          useMethodOn(DIAOracleV2, {
+            // We simulate a dramatic price drop for the token
+            // so the user falls below the min collateral ratio
+            method: 'setValue',
+            args: [
+              `${symbol}/USD`,
+              0.0001 * 10 ** usdValDecimals,
+              timeInSecs(),
+            ],
+            account: accounts[0],
+          })
+        )
+        .then(() =>
+          useMethodOn(FUSDTokenSale, {
+            // We calculate the max collateral to withdraw for the user
+            method: 'calculateMaxCollateralToWithdraw',
+            args: [accounts[1]],
+            onReturn: (maxCollateralToWithdraw) => {
+              // and check that the value is 0
+              assert.strictEqual(parseInt(maxCollateralToWithdraw), 0);
+            },
+          })
+        );
+    });
+
     describe('throws error if min collateral ratio is lower than liquidation threshold', async () => {
       const expectedError =
         'FUSDTokenSale: Liquidation threshold must be below minimum collateral ratio';
@@ -685,35 +879,6 @@ describe('FUSDTokenSale tests', () => {
           // We check that the error was raised
           assert.ok(errorRaised);
         });
-      });
-    });
-
-    it('throws error if non owner tries to update CR params', async () => {
-      let errorsRaised = 0;
-      const methods = [
-        'setMinCollateralRatioForLoanTenthPerc',
-        'setLiquidationPenaltyTenthPerc',
-        'setAnnualInterestRateTenthPerc',
-      ];
-
-      return useMethodsOn(
-        FUSDTokenSale,
-        methods.map((method) => ({
-          method,
-          args: [100 * 10],
-          account: accounts[1],
-          catch: (_, data) => {
-            assert.strictEqual(
-              data.slice(0, 32),
-              // OwnableUnauthorizedAccount error signature
-              '0x118cdaa70000000000000000000000'
-            );
-            errorsRaised++;
-          },
-        }))
-      ).then(() => {
-        // We check that the error was raised
-        assert.strictEqual(errorsRaised, methods.length);
       });
     });
   });

@@ -311,6 +311,12 @@ describe('FUSDTokenSale tests', () => {
     return { userToPayOffDebt, totalUserLoanAmount };
   };
 
+  const formatTokenBalances = (balances, symbols) =>
+    balances.reduce((obj, balance, i) => {
+      obj[symbols[i]] = parseInt(balance);
+      return obj;
+    }, {});
+
   describe('FUSDTokenSale', () => {
     it('deploys successfully', () => {
       assert.ok(FUSDTokenSale.options.address);
@@ -789,6 +795,150 @@ describe('FUSDTokenSale tests', () => {
               assert.strictEqual(parseInt(maxCollateralToWithdraw), 0);
             },
           })
+        );
+    });
+
+    it('calculates max collateral tokens to withdraw', () => {
+      const tokenToUsd = {
+        USDT: 0.5,
+        USDC: 1,
+        DAI: 2,
+      };
+      const erc20Params = mapObject(tokenToUsd, (usdOracleValue) => ({
+        decimals: 18,
+        usdOracleValue: usdOracleValue * 10 ** usdValDecimals,
+      }));
+
+      const userDepositParams = [
+        {
+          symbol: 'USDT',
+          amount: 3000,
+          loanAmount: 500,
+          account: accounts[1],
+        },
+        {
+          symbol: 'USDC',
+          amount: 2500,
+          loanAmount: 1000,
+          account: accounts[2],
+        },
+        {
+          symbol: 'DAI',
+          amount: 4500,
+          loanAmount: 2000,
+          account: accounts[3],
+        },
+        {
+          symbol: 'USDT',
+          amount: 2000,
+          loanAmount: 500,
+          account: accounts[4],
+        },
+        {
+          symbol: 'USDC',
+          amount: 2000,
+          loanAmount: 500,
+          account: accounts[4],
+        },
+        {
+          symbol: 'DAI',
+          amount: 2000,
+          loanAmount: 500,
+          account: accounts[4],
+        },
+      ];
+      const expectedMaxTokensToWithdraw = {
+        [accounts[1]]: {
+          USDT: 1500,
+          USDC: 0,
+          DAI: 0,
+        },
+        [accounts[2]]: {
+          USDT: 0,
+          USDC: 1000,
+          DAI: 0,
+        },
+        [accounts[3]]: {
+          USDT: 0,
+          USDC: 0,
+          DAI: 3000,
+        },
+        [accounts[4]]: {
+          USDT: 2000,
+          USDC: 2000,
+          DAI: 2000,
+        },
+      };
+
+      const users = getAccountsWithDeposits(userDepositParams);
+      const tokenContracts = {};
+
+      return setUpUserCollateralAndLoans(
+        userDepositParams,
+        tokenContracts,
+        erc20Params
+      )
+        .then(() =>
+          useMethodsOn(
+            FUSDTokenSale,
+            users.flatMap((account) => [
+              {
+                // For each user we calculate the max collateral tokens they can withdraw
+                method: 'calculateMaxTokensToWithdraw',
+                args: [account],
+                onReturn: (result) => {
+                  const maxTokensToWithdraw = formatTokenBalances(
+                    result[0],
+                    result[1]
+                  );
+
+                  // and check that the value matches the expected value
+                  assert.deepStrictEqual(
+                    maxTokensToWithdraw,
+                    expectedMaxTokensToWithdraw[account]
+                  );
+                },
+              },
+            ])
+          )
+        )
+        .then(() =>
+          useMethodsOn(
+            DIAOracleV2,
+            Object.keys(erc20Params).map((symbol) => ({
+              // We simulate a dramatic price drop for the token
+              // so the user falls below the min collateral ratio
+              method: 'setValue',
+              args: [
+                `${symbol}/USD`,
+                0.0001 * 10 ** usdValDecimals,
+                timeInSecs(),
+              ],
+              account: accounts[0],
+            }))
+          )
+        )
+        .then(() =>
+          useMethodsOn(
+            FUSDTokenSale,
+            users.map((account) => ({
+              method: 'calculateMaxTokensToWithdraw',
+              args: [account],
+              onReturn: (result) => {
+                const maxTokensToWithdraw = formatTokenBalances(
+                  result[0],
+                  result[1]
+                );
+
+                // Since the user is below the min collateral ratio
+                // we expect the max collateral tokens to withdraw to be 0
+                assert.deepStrictEqual(
+                  maxTokensToWithdraw,
+                  mapObject(tokenToUsd, () => 0)
+                );
+              },
+            }))
+          )
         );
     });
 
@@ -1711,12 +1861,6 @@ describe('FUSDTokenSale tests', () => {
       const loanAmount = 100;
       const depositAmount = 150;
       let tokenContracts = {};
-
-      const formatTokenBalances = (balances, symbols) =>
-        balances.reduce((obj, balance, i) => {
-          obj[symbols[i]] = parseInt(balance);
-          return obj;
-        }, {});
 
       beforeEach(() => {
         // In these tests we want to simulate a user depositing a token

@@ -6,6 +6,10 @@ library Math {
         return uint256(x >= 0 ? x : -x);
     }
 
+    function min(uint256 x, uint256 y) internal pure returns (uint256) {
+        return x <= y ? x : y;
+    }
+
     /**
      * @dev Multiplies n by 10^exponent. Exponent can be negative, in which case it will divide n
      * by 10^|exponent|.

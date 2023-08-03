@@ -4,12 +4,16 @@ pragma solidity ^0.8.19;
 import "./FUSDTokenSaleUtils/FUSDTokenHandler.sol";
 import "./FUSDTokenSaleUtils/LiquidatingUserAssetsBelowLiquidationThreshold.sol";
 import "./FUSDTokenSaleUtils/StoringERC20WithdrawableAddress.sol";
+import "./libraries/Math.sol";
+import "./libraries/TransformUintToInt.sol";
 
 contract FUSDTokenSale is
     FUSDTokenHandler,
     LiquidatingUserAssetsBelowLiquidationThreshold,
     StoringERC20WithdrawableAddress
 {
+    using TransformUintToInt for uint8;
+
     event LiquidatedUser(address indexed user, uint256 collateralWorthInFUSD, uint256 totalDebt);
 
     constructor(
@@ -235,5 +239,48 @@ contract FUSDTokenSale is
         if (totalAllowedToWithdraw >= collateralWorthInFUSD) return 0;
 
         return collateralWorthInFUSD - totalAllowedToWithdraw;
+    }
+
+    /**
+     * @dev Returns the maximum amount of tokens the user can withdraw. If the user falls
+     * below the minimum collateral ratio, returns 0. If the total withdrawable collateral
+     * amount is higher than the balance of an individual token, returns the balance of that token.
+     * @param user Address of the user
+     *
+     * @return maxTokensToWithdraw Array of maximum tokens to withdraw. The index of each token corresponds to the index of the symbol in the symbols array.
+     * @return symbols Array of symbols. The index of each symbol corresponds to the index of the token in the maxTokensToWithdraw array.
+     */
+    function calculateMaxTokensToWithdraw(address user)
+        public
+        view
+        returns (uint256[] memory maxTokensToWithdraw, string[] memory symbols)
+    {
+        TokenAdapterInterface[] memory tokenAdapters = getTokenAdapters();
+        bytes32[] memory tokenKeys = getTokenKeys();
+        (uint256[] memory balances, ) = getUserTokenBalances(user);
+
+        maxTokensToWithdraw = new uint256[](tokenKeys.length);
+        symbols = new string[](tokenKeys.length);
+
+        uint256 maxCollateralToWithdraw = calculateMaxCollateralToWithdraw(user);
+
+        for (uint256 i = 0; i < tokenKeys.length; i++) {
+            ERC20 token = ERC20(tokenAdapters[i].getToken());
+            FUSDToken fusdToken = FUSDToken(getFUSDToken());
+            uint128 priceInUsd = tokenAdapters[i].getOracleValue();
+
+            int16 usdPriceDecimals = tokenAdapters[i].decimals().toInt();
+            int16 tokenDecimals = ERC20(token).decimals().toInt();
+            int16 fusdDecimals = fusdToken.decimals().toInt();
+
+            uint256 tokensToWithdraw = Math.multiplyByTenPow(
+                maxCollateralToWithdraw,
+                tokenDecimals + usdPriceDecimals - fusdDecimals
+            ) / priceInUsd;
+            uint256 tokenBalance = balances[i];
+
+            maxTokensToWithdraw[i] = Math.min(tokensToWithdraw, tokenBalance);
+            symbols[i] = ERC20(tokenAdapters[i].getToken()).symbol();
+        }
     }
 }

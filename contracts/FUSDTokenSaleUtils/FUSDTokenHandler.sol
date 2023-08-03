@@ -15,6 +15,13 @@ abstract contract FUSDTokenHandler is ERC20ExchangeVault {
         fusdToken = FUSDToken(_fusdToken);
     }
 
+    /**
+     * @dev Returns the address of the FUSD token.
+     */
+    function getFUSDToken() public view returns (address) {
+        return address(fusdToken);
+    }
+
     function mintFUSD(address user, uint256 amount) internal {
         fusdToken.mint(user, amount);
     }

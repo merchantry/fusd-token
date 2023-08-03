@@ -126,6 +126,49 @@ abstract contract Ownable is Context {
 }
 
 
+// File contracts/FUSDTokenUtils/FlaggingMinters.sol
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+abstract contract FlaggingMinters is Ownable {
+    mapping(address => bool) private _isMinter;
+
+    constructor() {
+        setIsMinter(_msgSender(), true);
+    }
+
+    modifier onlyMinters() {
+        require(_isMinter[_msgSender()], "FlaggingMinters: caller is not a minter");
+        _;
+    }
+
+    /**
+     * @dev Overrides the transferOwnership function to set the new owner as a minter.
+     */
+    function transferOwnership(address newOwner) public override onlyOwner {
+        setIsMinter(newOwner, true);
+        super.transferOwnership(newOwner);
+    }
+
+    /**
+     * @dev Allows the owner to change the status of a minter.
+     * @param minter Address of the minter to change status.
+     * @param value True for minter, false for non-minter.
+     */
+    function setIsMinter(address minter, bool value) public onlyOwner {
+        _isMinter[minter] = value;
+    }
+
+    /**
+     * @dev Returns true if the address is a minter.
+     * @param minter Address to check.
+     */
+    function isMinter(address minter) public view returns (bool) {
+        return _isMinter[minter];
+    }
+}
+
+
 // File contracts/openzeppelin/interfaces/draft-IERC6093.sol
 
 // SPDX-License-Identifier: MIT
@@ -778,10 +821,10 @@ abstract contract ERC20 is Context, IERC20, IERC20Metadata, IERC20Errors {
 pragma solidity ^0.8.19;
 
 
-contract FUSDToken is ERC20, Ownable {
+contract FUSDToken is ERC20, FlaggingMinters {
     constructor() ERC20("FUSD Token", "FUSD") Ownable(_msgSender()) {}
 
-    function mint(address _to, uint256 _amount) public onlyOwner {
+    function mint(address _to, uint256 _amount) public onlyMinters {
         _mint(_to, _amount);
     }
 }
@@ -976,6 +1019,10 @@ library Math {
         return uint256(x >= 0 ? x : -x);
     }
 
+    function min(uint256 x, uint256 y) internal pure returns (uint256) {
+        return x <= y ? x : y;
+    }
+
     /**
      * @dev Multiplies n by 10^exponent. Exponent can be negative, in which case it will divide n
      * by 10^|exponent|.
@@ -1014,6 +1061,13 @@ abstract contract FUSDTokenHandler is ERC20ExchangeVault {
 
     constructor(address _fusdToken) {
         fusdToken = FUSDToken(_fusdToken);
+    }
+
+    /**
+     * @dev Returns the address of the FUSD token.
+     */
+    function getFUSDToken() public view returns (address) {
+        return address(fusdToken);
     }
 
     function mintFUSD(address user, uint256 amount) internal {
@@ -1072,7 +1126,7 @@ abstract contract FUSDTokenHandler is ERC20ExchangeVault {
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-abstract contract InterestCalculator is Ownable {
+abstract contract InterestCalculator {
     // Each point of annualInterestRateTenthPercent represents 0.1% of annual interest rate.
     uint16 private annualInterestRateTenthPerc;
     uint16 private constant MAX_INTEREST_RATE = 1000;
@@ -1093,14 +1147,9 @@ abstract contract InterestCalculator is Ownable {
         return annualInterestRateTenthPerc;
     }
 
-    /**
-     * @dev Allows the owner to set the annual interest rate.
-     * Each point of annualInterestRateTenthPercent represents 0.1% of annual interest rate.
-     * @param _annualInterestRateTenthPerc Annual interest rate in tenth percent. Must be between 0 and 1000 (0% and 100.0%).
-     */
     function setAnnualInterestRateTenthPerc(uint16 _annualInterestRateTenthPerc)
         public
-        onlyOwner
+        virtual
         validAnnualInterestRate(_annualInterestRateTenthPerc)
     {
         annualInterestRateTenthPerc = _annualInterestRateTenthPerc;
@@ -1122,7 +1171,7 @@ abstract contract InterestCalculator is Ownable {
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-abstract contract CollateralRatioCalculator is Ownable {
+abstract contract CollateralRatioCalculator {
     uint256 private minCollateralRatioForLoanTenthPerc;
     uint256 private liquidationPenaltyTenthPerc;
 
@@ -1132,7 +1181,7 @@ abstract contract CollateralRatioCalculator is Ownable {
     }
 
     /**
-     * @dev Returns the minimum collateral ratio required for a loan in percentage.
+     * @dev Returns the minimum collateral ratio required for a loan in 0.1%.
      * The user must have at least this much collateral to borrow FUSD. Also the
      * user's collateral ratio must be at least this much after borrowing FUSD.
      */
@@ -1140,30 +1189,24 @@ abstract contract CollateralRatioCalculator is Ownable {
         return minCollateralRatioForLoanTenthPerc;
     }
 
-    /**
-     * @dev Allows owner to set the minimum collateral ratio required for a loan in percentage.
-     */
-    function setMinCollateralRatioForLoanTenthPerc(uint256 _minCollateralRatioForLoanTenthPerc) public onlyOwner {
+    function setMinCollateralRatioForLoanTenthPerc(uint256 _minCollateralRatioForLoanTenthPerc) public virtual {
         minCollateralRatioForLoanTenthPerc = _minCollateralRatioForLoanTenthPerc;
     }
 
     /**
-     * @dev Returns the liquidation penalty in percentage. The liquidation penalty
+     * @dev Returns the liquidation penalty in 0.1%. The liquidation penalty
      * is used to calculate the liquidation threshold
      */
     function getLiquidationPenaltyTenthPerc() public view returns (uint256) {
         return liquidationPenaltyTenthPerc;
     }
 
-    /**
-     * @dev Allows owner to set the liquidation penalty in percentage.
-     */
-    function setLiquidationPenaltyTenthPerc(uint256 _liquidationPenaltyTenthPerc) public onlyOwner {
+    function setLiquidationPenaltyTenthPerc(uint256 _liquidationPenaltyTenthPerc) public virtual {
         liquidationPenaltyTenthPerc = _liquidationPenaltyTenthPerc;
     }
 
     /**
-     * @dev Returns the collateral ratio in percentage.
+     * @dev Returns the collateral ratio in 0.1%.
      */
     function calculateCollateralRatio(uint256 collateralWorthInFUSD, uint256 totalDebt)
         internal
@@ -1172,7 +1215,7 @@ abstract contract CollateralRatioCalculator is Ownable {
     {
         require(totalDebt > 0, "CollateralRatioCalculator: Total debt must be greater than 0");
 
-        return (collateralWorthInFUSD * 100) / totalDebt;
+        return (collateralWorthInFUSD * 1000) / totalDebt;
     }
 
     /**
@@ -1185,7 +1228,7 @@ abstract contract CollateralRatioCalculator is Ownable {
     }
 
     function getLiquidationThreshold() public view virtual returns (uint256) {
-        return 100 + liquidationPenaltyTenthPerc;
+        return 1000 + liquidationPenaltyTenthPerc;
     }
 }
 
@@ -1307,17 +1350,17 @@ abstract contract DebtHandler is InterestCalculator, TimeHandler {
 pragma solidity ^0.8.19;
 
 
-abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler, CollateralRatioCalculator {
+abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler, CollateralRatioCalculator, Ownable {
     mapping(address => bool) private debtorRegistered;
     address[] private debtors;
 
     /**
      * @dev Returns the liquidation threshold in percentage. If the collateral ratio
      * of a user is below this threshold, the user will be liquidated.
+     * @return {uint256} liquidation threshold in percentage in 0.1%.
      */
     function getLiquidationThreshold() public view override returns (uint256) {
-        uint256 interestRatePerc = getAnnualInterestRateTenthPerc();
-        return super.getLiquidationThreshold() + interestRatePerc;
+        return super.getLiquidationThreshold() + getAnnualInterestRateTenthPerc();
     }
 
     function registerDebtor(address debtor) internal {
@@ -1433,6 +1476,8 @@ contract FUSDTokenSale is
     LiquidatingUserAssetsBelowLiquidationThreshold,
     StoringERC20WithdrawableAddress
 {
+    using TransformUintToInt for uint8;
+
     event LiquidatedUser(address indexed user, uint256 collateralWorthInFUSD, uint256 totalDebt);
 
     constructor(
@@ -1447,7 +1492,28 @@ contract FUSDTokenSale is
         CollateralRatioCalculator(minCollateralRatioForLoanTenthPerc, liquidationPenaltyTenthPerc)
         StoringERC20WithdrawableAddress(erc20WithdrawableAddress)
         Ownable(_msgSender())
+        LTIsBelowMinCR(annualInterestRateTenthPerc, liquidationPenaltyTenthPerc, minCollateralRatioForLoanTenthPerc)
     {}
+
+    modifier LTIsBelowMinCR(
+        uint256 annualInterestRateTenthPerc,
+        uint256 liquidationPenaltyTenthPerc,
+        uint256 minCollateralRatioForLoanTenthPerc
+    ) {
+        require(
+            1000 + liquidationPenaltyTenthPerc + annualInterestRateTenthPerc < minCollateralRatioForLoanTenthPerc,
+            "FUSDTokenSale: Liquidation threshold must be below minimum collateral ratio"
+        );
+        _;
+    }
+
+    modifier collateralRatioSafe(address user) {
+        _;
+        require(
+            isCollateralRatioSafe(getUserCollateralWorthInFUSD(user), getTotalDebt(user)),
+            "FUSDTokenSale: collateral ratio is unsafe"
+        );
+    }
 
     function depositTokenAndBorrowFUSD(
         address token,
@@ -1464,12 +1530,11 @@ contract FUSDTokenSale is
      * the transaction reverts.
      * @param amount Amount of FUSD to borrow
      */
-    function borrowFUSD(uint256 amount) public {
+    function borrowFUSD(uint256 amount) public collateralRatioSafe(_msgSender()) {
         address user = _msgSender();
+
         _addLoan(user, amount, time());
         registerDebtor(user);
-
-        revertIfCollateralRatioUnsafe(user);
         mintFUSD(user, amount);
     }
 
@@ -1514,17 +1579,8 @@ contract FUSDTokenSale is
      * @param token Address of the token to withdraw
      * @param amount Amount of the token to withdraw
      */
-    function withdrawToken(address token, uint256 amount) public {
-        address user = _msgSender();
-        _withdrawToken(user, token, amount);
-        revertIfCollateralRatioUnsafe(user);
-    }
-
-    function revertIfCollateralRatioUnsafe(address user) internal view {
-        require(
-            isCollateralRatioSafe(getUserCollateralWorthInFUSD(user), getTotalDebt(user)),
-            "FUSDTokenSale: collateral ratio is unsafe"
-        );
+    function withdrawToken(address token, uint256 amount) public collateralRatioSafe(_msgSender()) {
+        _withdrawToken(_msgSender(), token, amount);
     }
 
     /**
@@ -1560,5 +1616,135 @@ contract FUSDTokenSale is
 
         withdrawAllUserAssetsToWithdrawable(user, erc20WithdrawableAddress);
         _addRepayment(user, totalDebt, time());
+    }
+
+    /**
+     * @dev Allows owner to set the minimum collateral ratio required for a loan in 0.1%.
+     * The minimum collateral ratio must be below the liquidation threshold.
+     */
+    function setMinCollateralRatioForLoanTenthPerc(uint256 _minCollateralRatioForLoanTenthPerc)
+        public
+        override
+        onlyOwner
+        LTIsBelowMinCR(
+            getAnnualInterestRateTenthPerc(),
+            getLiquidationPenaltyTenthPerc(),
+            _minCollateralRatioForLoanTenthPerc
+        )
+    {
+        super.setMinCollateralRatioForLoanTenthPerc(_minCollateralRatioForLoanTenthPerc);
+    }
+
+    /**
+     * @dev Allows owner to set the liquidation penalty in 0.1%.
+     * The resulting liquidation penalty must be below the minimum collateral ratio.
+     */
+    function setLiquidationPenaltyTenthPerc(uint256 _liquidationPenaltyTenthPerc)
+        public
+        override
+        onlyOwner
+        LTIsBelowMinCR(
+            getAnnualInterestRateTenthPerc(),
+            _liquidationPenaltyTenthPerc,
+            getMinCollateralRatioForLoanTenthPerc()
+        )
+    {
+        super.setLiquidationPenaltyTenthPerc(_liquidationPenaltyTenthPerc);
+    }
+
+    /**
+     * @dev Allows the owner to set the annual interest rate.
+     * Each point of annualInterestRateTenthPercent represents 0.1% of annual interest rate.
+     * The resulting liquidation penalty must be below the minimum collateral ratio.
+     * @param _annualInterestRateTenthPerc Annual interest rate in tenth percent. Must be between 0 and 1000 (0% and 100.0%).
+     */
+    function setAnnualInterestRateTenthPerc(uint16 _annualInterestRateTenthPerc)
+        public
+        override
+        onlyOwner
+        LTIsBelowMinCR(
+            _annualInterestRateTenthPerc,
+            getLiquidationPenaltyTenthPerc(),
+            getMinCollateralRatioForLoanTenthPerc()
+        )
+    {
+        super.setAnnualInterestRateTenthPerc(_annualInterestRateTenthPerc);
+    }
+
+    /**
+     * @dev Returns the maximum amount of FUSD the user can borrow. If the user falls
+     * below the minimum collateral ratio, returns 0.
+     * @param user Address of the user
+     */
+    function calculateMaxFUSDToBorrow(address user) public view returns (uint256) {
+        uint256 collateralWorthInFUSD = getUserCollateralWorthInFUSD(user);
+        uint256 totalDebt = getTotalDebt(user);
+        uint256 minCollateralRatio = getMinCollateralRatioForLoanTenthPerc();
+
+        uint256 totalAllowedToBorrow = (collateralWorthInFUSD * 1000) / minCollateralRatio;
+
+        if (totalAllowedToBorrow <= totalDebt) return 0;
+
+        return totalAllowedToBorrow - totalDebt;
+    }
+
+    /**
+     * @dev Returns the maximum amount of collateral the user can withdraw. If the user falls
+     * below the minimum collateral ratio, returns 0.
+     * @param user Address of the user
+     */
+    function calculateMaxCollateralToWithdraw(address user) public view returns (uint256) {
+        uint256 collateralWorthInFUSD = getUserCollateralWorthInFUSD(user);
+        uint256 totalDebt = getTotalDebt(user);
+        uint256 minCollateralRatio = getMinCollateralRatioForLoanTenthPerc();
+
+        uint256 totalAllowedToWithdraw = (totalDebt * minCollateralRatio) / 1000;
+
+        if (totalAllowedToWithdraw >= collateralWorthInFUSD) return 0;
+
+        return collateralWorthInFUSD - totalAllowedToWithdraw;
+    }
+
+    /**
+     * @dev Returns the maximum amount of tokens the user can withdraw. If the user falls
+     * below the minimum collateral ratio, returns 0. If the total withdrawable collateral
+     * amount is higher than the balance of an individual token, returns the balance of that token.
+     * @param user Address of the user
+     *
+     * @return maxTokensToWithdraw Array of maximum tokens to withdraw. The index of each token corresponds to the index of the symbol in the symbols array.
+     * @return symbols Array of symbols. The index of each symbol corresponds to the index of the token in the maxTokensToWithdraw array.
+     */
+    function calculateMaxTokensToWithdraw(address user)
+        public
+        view
+        returns (uint256[] memory maxTokensToWithdraw, string[] memory symbols)
+    {
+        TokenAdapterInterface[] memory tokenAdapters = getTokenAdapters();
+        bytes32[] memory tokenKeys = getTokenKeys();
+        (uint256[] memory balances, ) = getUserTokenBalances(user);
+
+        maxTokensToWithdraw = new uint256[](tokenKeys.length);
+        symbols = new string[](tokenKeys.length);
+
+        uint256 maxCollateralToWithdraw = calculateMaxCollateralToWithdraw(user);
+
+        for (uint256 i = 0; i < tokenKeys.length; i++) {
+            ERC20 token = ERC20(tokenAdapters[i].getToken());
+            FUSDToken fusdToken = FUSDToken(getFUSDToken());
+            uint128 priceInUsd = tokenAdapters[i].getOracleValue();
+
+            int16 usdPriceDecimals = tokenAdapters[i].decimals().toInt();
+            int16 tokenDecimals = ERC20(token).decimals().toInt();
+            int16 fusdDecimals = fusdToken.decimals().toInt();
+
+            uint256 tokensToWithdraw = Math.multiplyByTenPow(
+                maxCollateralToWithdraw,
+                tokenDecimals + usdPriceDecimals - fusdDecimals
+            ) / priceInUsd;
+            uint256 tokenBalance = balances[i];
+
+            maxTokensToWithdraw[i] = Math.min(tokensToWithdraw, tokenBalance);
+            symbols[i] = ERC20(tokenAdapters[i].getToken()).symbol();
+        }
     }
 }

@@ -10,7 +10,7 @@ const adapterContract =
 const oracleContract = contracts['oracles/DIAOracleV2.sol'].DIAOracleV2;
 
 const erc20TokenName = 'TELOS';
-const erc20TokenSymbol = 'wTLOS';
+const erc20TokenSymbol = 'WTLOS';
 const oracleTokenKey = 'TLOS/USD';
 const usdValDecimals = 8;
 const erc20TokenDecimals = 18;
@@ -106,8 +106,8 @@ describe('DIAOracleV2wTLOSAdapter tests', () => {
           expectError: true,
         },
         {
-          // wTLOS is the only valid symbol for the token
-          symbol: 'wTLOS',
+          // WTLOS is the only valid symbol for the token
+          symbol: 'WTLOS',
           expectError: false,
         },
         {

@@ -10,6 +10,7 @@ const useMethodsOn = (contractInstance, methods) => {
       const {
         method,
         args = [],
+        value = undefined,
         account,
         onReturn,
         wait = null,
@@ -36,6 +37,7 @@ const useMethodsOn = (contractInstance, methods) => {
         [onReturn ? 'call' : 'send']({
           from: account,
           gas: '1000000000',
+          value,
         })
         .catch(() =>
           contractInstance.methods[method](...args)
@@ -86,9 +88,16 @@ const getBalanceOfUser = async (TokenContract, account) => {
   return parseInt(balance);
 };
 
+const compiledContractMap = (contracts) => (contractFileAndName) => {
+  const [contractFile, _contractName] = contractFileAndName.split(':');
+  const contractName = _contractName ?? contractFile.match(/(\w+)\.sol/)[1];
+  return contracts[contractFile][contractName];
+};
+
 module.exports = {
   useMethodsOn,
   useMethodOn,
   getContractEvents,
   getBalanceOfUser,
+  compiledContractMap,
 };

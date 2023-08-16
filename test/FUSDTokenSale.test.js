@@ -17,7 +17,9 @@ const {
   useMethodsOn,
   useMethodOn,
   getContractEvents,
+  compiledContractMap,
 } = require('../utils/contracts');
+const OldVersionCompiler = require('../utils/OldVersionCompiler');
 
 const erc20TokenContract = contracts['ERC20Token.sol'].ERC20Token;
 const fusdTokenContract = contracts['FUSDToken.sol'].FUSDToken;
@@ -39,12 +41,17 @@ const symbols = ['USDT', 'USDC', 'DAI'];
 
 describe('FUSDTokenSale tests', () => {
   let accounts,
+    getOldVersionContract,
     withdrawableAddress,
     FUSDToken,
     FUSDTokenSale,
     ERC20Token,
     DIAOracleV2,
     DIAOracleV2TokenAdapter;
+
+  before(async () => {
+    getOldVersionContract = compiledContractMap(await OldVersionCompiler.get());
+  });
 
   beforeEach(async () => {
     accounts = await getAccounts();
@@ -1966,6 +1973,113 @@ describe('FUSDTokenSale tests', () => {
             },
           })
         ));
+    });
+
+    describe('wTLOS sa', () => {
+      let wTLOS;
+
+      beforeEach(async () => {
+        wTLOS = await deploy(
+          getOldVersionContract('test/WTLOS.sol'),
+          [],
+          accounts[0]
+        );
+      });
+
+      const setUpWTLOSTokenAdapter = () =>
+        useMethodOn(DIAOracleV2, {
+          // We set the value for the token symbol we are using in the tests
+          method: 'setValue',
+          args: ['TLOS/USD', 1 * 10 ** usdValDecimals, timeInSecs()],
+          account: accounts[0],
+        })
+          .then(() =>
+            // We deploy the token adapter contract with the oracle and token addresses.
+            // The oracle must have a value for the token symbol we are using in the tests
+            deploy(
+              contracts['DIAOracleV2wTLOSAdapter.sol'].DIAOracleV2wTLOSAdapter,
+              [DIAOracleV2.options.address, wTLOS.options.address],
+              accounts[0]
+            )
+          )
+
+          .then((tokenAdapter) =>
+            useMethodOn(FUSDTokenSale, {
+              method: 'addTokenAdapter',
+              args: [tokenAdapter.options.address],
+              account: accounts[0],
+            })
+          );
+
+      it('deploys successfully', () => {
+        assert.ok(wTLOS.options.address);
+      });
+
+      it('accepts TLOS deposits', () => {
+        const depositAmount = randomInt(1000, 10000);
+
+        return useMethodsOn(wTLOS, [
+          {
+            // User deposits TLOS to receive wTLOS
+            method: 'deposit',
+            account: accounts[0],
+            value: depositAmount,
+          },
+          {
+            // We check that the user balance matches the deposit amount
+            method: 'balanceOf',
+            args: [accounts[0]],
+            onReturn: (balance) => {
+              assert.strictEqual(parseInt(balance), depositAmount);
+            },
+          },
+        ]);
+      });
+
+      it('can be sent as deposit to FUSDTokenSale', () => {
+        const depositAmount = randomInt(1000, 10000);
+
+        return setUpWTLOSTokenAdapter()
+          .then(() =>
+            useMethodsOn(wTLOS, [
+              {
+                // User deposits TLOS to receive wTLOS
+                method: 'deposit',
+                account: accounts[0],
+                value: depositAmount,
+              },
+              {
+                // And approves the token sale contract to spend their wTLOS
+                method: 'approve',
+                args: [FUSDTokenSale.options.address, depositAmount],
+                account: accounts[0],
+              },
+            ])
+          )
+          .then(() =>
+            useMethodsOn(FUSDTokenSale, [
+              {
+                // User deposits wTLOS in the token sale contract
+                method: 'depositToken',
+                args: [wTLOS.options.address, depositAmount],
+                account: accounts[0],
+              },
+              {
+                // We check that the user balance matches the deposit amount
+                method: 'getUserTokenBalances',
+                args: [accounts[0]],
+                onReturn: (result) => {
+                  const formattedBalances = formatTokenBalances(
+                    result[0],
+                    result[1]
+                  );
+
+                  assert.strictEqual(formattedBalances.WTLOS, depositAmount);
+                },
+              },
+            ])
+          );
+      });
     });
   });
 });

@@ -2,10 +2,10 @@ const assert = require('assert');
 const contracts = require('../compile');
 const { deploy, getAccounts } = require('../utils/useWeb3');
 const { schedule, everySecond } = require('../utils/cronJob');
-const { useMethodOn } = require('../utils/contracts');
+const { useMethodOn, compiledContractMap } = require('../utils/contracts');
 const { timeInSecs } = require('../utils/helper');
 
-const timerContract = contracts['test/TimerTestContract.sol'].TimerTestContract;
+const getContract = compiledContractMap(contracts);
 
 const secondsToWait = 3;
 
@@ -16,7 +16,7 @@ describe('Cron job tests', () => {
     accounts = await getAccounts();
     deployedAt = timeInSecs();
     TimerTestContract = await deploy(
-      timerContract,
+      getContract('test/TimerTestContract.sol'),
       [deployedAt, secondsToWait],
       accounts[0]
     );

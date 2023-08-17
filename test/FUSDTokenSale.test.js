@@ -21,12 +21,7 @@ const {
 } = require('../utils/contracts');
 const OldVersionCompiler = require('../utils/OldVersionCompiler');
 
-const erc20TokenContract = contracts['ERC20Token.sol'].ERC20Token;
-const fusdTokenContract = contracts['FUSDToken.sol'].FUSDToken;
-const tokenSaleContract = contracts['FUSDTokenSale.sol'].FUSDTokenSale;
-const adapterContract =
-  contracts['DIAOracleV2TokenAdapter.sol'].DIAOracleV2TokenAdapter;
-const oracleContract = contracts['oracles/DIAOracleV2.sol'].DIAOracleV2;
+const getContract = compiledContractMap(contracts);
 
 const erc20TokenName = 'USD Coin';
 const erc20TokenSymbol = 'USDC';
@@ -56,9 +51,9 @@ describe('FUSDTokenSale tests', () => {
   beforeEach(async () => {
     accounts = await getAccounts();
     withdrawableAddress = accounts[8];
-    FUSDToken = await deploy(fusdTokenContract, [], accounts[0]);
+    FUSDToken = await deploy(getContract('FUSDToken.sol'), [], accounts[0]);
     FUSDTokenSale = await deploy(
-      tokenSaleContract,
+      getContract('FUSDTokenSale.sol'),
       [
         FUSDToken.options.address,
         annualInterestRate, // In the contract the annual interest rate is represented by tenths of a percent (1 = 0.1%)
@@ -68,9 +63,13 @@ describe('FUSDTokenSale tests', () => {
       ],
       accounts[0]
     );
-    DIAOracleV2 = await deploy(oracleContract, [], accounts[0]);
+    DIAOracleV2 = await deploy(
+      getContract('oracles/DIAOracleV2.sol'),
+      [],
+      accounts[0]
+    );
     ERC20Token = await deploy(
-      erc20TokenContract,
+      getContract('ERC20Token.sol'),
       [erc20TokenName, erc20TokenSymbol, erc20TokenDecimals],
       accounts[0]
     );
@@ -87,7 +86,7 @@ describe('FUSDTokenSale tests', () => {
         // We deploy the token adapter contract with the oracle and token addresses.
         // The oracle must have a value for the token symbol we are using in the tests
         deploy(
-          adapterContract,
+          getContract('DIAOracleV2TokenAdapter.sol'),
           [DIAOracleV2.options.address, ERC20Token.options.address],
           accounts[0]
         )
@@ -117,7 +116,7 @@ describe('FUSDTokenSale tests', () => {
     const ERC20Tokens = await Promise.all(
       Object.entries(params).map(([symbol, { decimals }]) =>
         deploy(
-          erc20TokenContract,
+          getContract('ERC20Token.sol'),
           [erc20TokenName, symbol, decimals],
           accounts[0]
         )
@@ -140,7 +139,7 @@ describe('FUSDTokenSale tests', () => {
             // We deploy the token adapter contract with the oracle and token addresses.
             // The oracle must have a value for the token symbol we are using in the tests
             deploy(
-              adapterContract,
+              getContract('DIAOracleV2TokenAdapter.sol'),
               [DIAOracleV2.options.address, token.options.address],
               accounts[0]
             )
@@ -164,7 +163,7 @@ describe('FUSDTokenSale tests', () => {
    */
   const getTokenContractAndSymbolFromAdapter = async (adapterAddress) => {
     const TokenAdapter = await getDeployedContract(
-      adapterContract,
+      getContract('DIAOracleV2TokenAdapter.sol'),
       adapterAddress
     );
 
@@ -173,7 +172,10 @@ describe('FUSDTokenSale tests', () => {
       onReturn: () => {},
     });
 
-    const Token = await getDeployedContract(erc20TokenContract, tokenAddress);
+    const Token = await getDeployedContract(
+      getContract('ERC20Token.sol'),
+      tokenAddress
+    );
     const tokenSymbol = await useMethodOn(Token, {
       method: 'symbol',
       onReturn: () => {},
@@ -957,7 +959,7 @@ describe('FUSDTokenSale tests', () => {
         let errorRaised = false;
 
         await deploy(
-          tokenSaleContract,
+          getContract('FUSDTokenSale.sol'),
           [
             FUSDToken.options.address,
             annualInterestRate, // In the contract the annual interest rate is represented by tenths of a percent (1 = 0.1%)
@@ -1343,7 +1345,7 @@ describe('FUSDTokenSale tests', () => {
 
     it('throws error if user tries to deposit non-supported token', async () => {
       const erc20Token = await deploy(
-        erc20TokenContract,
+        getContract('ERC20Token.sol'),
         [erc20TokenName, 'USDT', erc20TokenDecimals],
         accounts[0]
       );
@@ -1560,7 +1562,10 @@ describe('FUSDTokenSale tests', () => {
         onReturn: () => {},
       })
         .then((tokenAdapterAddresses) =>
-          getDeployedContract(adapterContract, tokenAdapterAddresses[0])
+          getDeployedContract(
+            getContract('DIAOracleV2TokenAdapter.sol'),
+            tokenAdapterAddresses[0]
+          )
         )
         .then((TokenAdapter) =>
           useMethodOn(TokenAdapter, {
@@ -1569,7 +1574,10 @@ describe('FUSDTokenSale tests', () => {
           })
         )
         .then((oracleAddress) =>
-          getDeployedContract(oracleContract, oracleAddress)
+          getDeployedContract(
+            getContract('oracles/DIAOracleV2.sol'),
+            oracleAddress
+          )
         );
 
     it('returns liquidation threshold', () =>
@@ -1998,7 +2006,7 @@ describe('FUSDTokenSale tests', () => {
           // We deploy the token adapter contract with the oracle and token addresses.
           // The oracle must have a value for the token symbol we are using in the tests
           deploy(
-            contracts['DIAOracleV2wTLOSAdapter.sol'].DIAOracleV2wTLOSAdapter,
+            getContract('DIAOracleV2wTLOSAdapter.sol'),
             [DIAOracleV2.options.address, wTLOS.options.address],
             accounts[0]
           )

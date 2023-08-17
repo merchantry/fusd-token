@@ -1,16 +1,20 @@
 const assert = require('assert');
 const contracts = require('../compile');
 const { deploy, getAccounts } = require('../utils/useWeb3');
-const { useMethodsOn, useMethodOn } = require('../utils/contracts');
+const {
+  useMethodsOn,
+  useMethodOn,
+  compiledContractMap,
+} = require('../utils/contracts');
 
-const tokenContract = contracts['FUSDToken.sol'].FUSDToken;
+const getContract = compiledContractMap(contracts);
 
 describe('FUSDToken tests', () => {
   let accounts, FUSDToken;
 
   beforeEach(async () => {
     accounts = await getAccounts();
-    FUSDToken = await deploy(tokenContract, [], accounts[0]);
+    FUSDToken = await deploy(getContract('FUSDToken.sol'), [], accounts[0]);
   });
 
   describe('FUSDToken', () => {

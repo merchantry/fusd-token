@@ -1,7 +1,9 @@
 const Web3 = require('web3');
 const contracts = require('../compile');
-const { useMethodOn } = require('../utils/contracts');
+const { useMethodOn, compiledContractMap } = require('../utils/contracts');
 const { schedule, everyMinute } = require('../utils/cronJob');
+
+const getContract = compiledContractMap(contracts);
 
 const PROVIDER = process.argv[2] || undefined;
 const PRIVATE_KEY = process.argv[3] || undefined;
@@ -22,7 +24,7 @@ if (!SALE_CONTRACT_ADDRESS) {
 const web3Provider = new Web3.providers.HttpProvider(PROVIDER);
 const web3 = new Web3(web3Provider);
 
-const saleContract = contracts['FUSDTokenSale.sol'].FUSDTokenSale;
+const saleContract = getContract('FUSDTokenSale.sol');
 
 const account = web3.eth.accounts.privateKeyToAccount('0x' + PRIVATE_KEY);
 const FUSDTokenSale = new web3.eth.Contract(

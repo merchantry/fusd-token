@@ -2,12 +2,13 @@ const assert = require('assert');
 const contracts = require('../compile');
 const { deploy, getAccounts } = require('../utils/useWeb3');
 const { timeInSecs, runPromisesInSequence } = require('../utils/helper');
-const { useMethodsOn, useMethodOn } = require('../utils/contracts');
+const {
+  useMethodsOn,
+  useMethodOn,
+  compiledContractMap,
+} = require('../utils/contracts');
 
-const erc20TokenContract = contracts['ERC20Token.sol'].ERC20Token;
-const adapterContract =
-  contracts['DIAOracleV2wTLOSAdapter.sol'].DIAOracleV2wTLOSAdapter;
-const oracleContract = contracts['oracles/DIAOracleV2.sol'].DIAOracleV2;
+const getContract = compiledContractMap(contracts);
 
 const erc20TokenName = 'TELOS';
 const erc20TokenSymbol = 'WTLOS';
@@ -20,9 +21,13 @@ describe('DIAOracleV2wTLOSAdapter tests', () => {
 
   beforeEach(async () => {
     accounts = await getAccounts();
-    DIAOracleV2 = await deploy(oracleContract, [], accounts[0]);
+    DIAOracleV2 = await deploy(
+      getContract('oracles/DIAOracleV2.sol'),
+      [],
+      accounts[0]
+    );
     ERC20Token = await deploy(
-      erc20TokenContract,
+      getContract('ERC20Token.sol'),
       [erc20TokenName, erc20TokenSymbol, erc20TokenDecimals],
       accounts[0]
     );
@@ -37,7 +42,7 @@ describe('DIAOracleV2wTLOSAdapter tests', () => {
         // We deploy the token adapter contract with the oracle and token addresses.
         // The oracle must have a value for the token symbol we are using in the tests
         deploy(
-          adapterContract,
+          getContract('DIAOracleV2wTLOSAdapter.sol'),
           [DIAOracleV2.options.address, ERC20Token.options.address],
           accounts[0]
         )
@@ -48,11 +53,12 @@ describe('DIAOracleV2wTLOSAdapter tests', () => {
       });
   });
   describe('DIAOracleV2wTLOSAdapter', () => {
-    const getNewOracleInstance = () => deploy(oracleContract, [], accounts[0]);
+    const getNewOracleInstance = () =>
+      deploy(getContract('oracles/DIAOracleV2.sol'), [], accounts[0]);
 
     const getNewTokenInstance = (symbol) =>
       deploy(
-        erc20TokenContract,
+        getContract('ERC20Token.sol'),
         [erc20TokenName, symbol, erc20TokenDecimals],
         accounts[0]
       );
@@ -85,7 +91,7 @@ describe('DIAOracleV2wTLOSAdapter tests', () => {
       let errorRaised = false;
 
       await deploy(
-        adapterContract,
+        getContract('DIAOracleV2wTLOSAdapter.sol'),
         [DIAOracleV2Copy.options.address, ERC20Token.options.address],
         accounts[0]
       ).catch((error) => {

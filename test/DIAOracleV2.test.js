@@ -2,9 +2,9 @@ const assert = require('assert');
 const contracts = require('../compile');
 const { deploy, getAccounts } = require('../utils/useWeb3');
 const { timeInSecs } = require('../utils/helper');
-const { useMethodsOn } = require('../utils/contracts');
+const { useMethodsOn, compiledContractMap } = require('../utils/contracts');
 
-const oracleContract = contracts['oracles/DIAOracleV2.sol'].DIAOracleV2;
+const getContract = compiledContractMap(contracts);
 
 const key = 'TLOS/USD';
 const value = 150;
@@ -14,7 +14,7 @@ describe('DIAOracleV2 tests', () => {
 
   beforeEach(async () => {
     accounts = await getAccounts();
-    DIAOracleV2 = await deploy(oracleContract, [], accounts[0]);
+    DIAOracleV2 = await deploy(getContract('oracles/DIAOracleV2.sol'), [], accounts[0]);
   });
 
   describe('DIAOracleV2', () => {

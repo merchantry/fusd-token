@@ -2,10 +2,13 @@ const assert = require('assert');
 const contracts = require('../compile');
 const { deploy, getAccounts } = require('../utils/useWeb3');
 const { timeInSecs } = require('../utils/helper');
-const { useMethodsOn, useMethodOn } = require('../utils/contracts');
+const {
+  useMethodsOn,
+  useMethodOn,
+  compiledContractMap,
+} = require('../utils/contracts');
 
-const debtHandlerContract =
-  contracts['test/DebtHandlerTestContract.sol'].DebtHandlerTestContract;
+const getContract = compiledContractMap(contracts);
 
 // 1 tenth of a percent = 0.1%
 const annualInterestRateTenthPerc = 60;
@@ -45,7 +48,7 @@ describe('DebtHandler tests', () => {
   beforeEach(async () => {
     accounts = await getAccounts();
     DebtHandler = await deploy(
-      debtHandlerContract,
+      getContract('test/DebtHandlerTestContract.sol'),
       [annualInterestRateTenthPerc],
       accounts[0]
     );
@@ -151,7 +154,11 @@ describe('DebtHandler tests', () => {
     it('throws error if deployed with invalid annual interest rate', async () => {
       let errorRaised = false;
 
-      await deploy(debtHandlerContract, [1001], accounts[0]).catch((error) => {
+      await deploy(
+        getContract('test/DebtHandlerTestContract.sol'),
+        [1001],
+        accounts[0]
+      ).catch((error) => {
         // On deployment we expect an error to be thrown
         // if the annual interest rate is invalid
         errorRaised = true;

@@ -8,6 +8,8 @@ const web3 = new Web3(
         log: () => {},
       },
     },
+    allowUnlimitedContractSize: true,
+
   })
 );
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 import "../openzeppelin/access/Ownable.sol";
 
@@ -18,7 +18,7 @@ abstract contract FlaggingMinters is Ownable {
     /**
      * @dev Overrides the transferOwnership function to set the new owner as a minter.
      */
-    function transferOwnership(address newOwner) public override onlyOwner {
+    function transferOwnership(address newOwner) public override virtual onlyOwner {
         setIsMinter(newOwner, true);
         super.transferOwnership(newOwner);
     }

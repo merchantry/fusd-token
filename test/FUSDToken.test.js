@@ -14,7 +14,11 @@ describe('FUSDToken tests', () => {
 
   beforeEach(async () => {
     accounts = await getAccounts();
-    FUSDToken = await deploy(getContract('FUSDToken.sol'), [], accounts[0]);
+    FUSDToken = await deploy(
+      getContract('FUSDToken.sol'),
+      [2, accounts[6]],
+      accounts[0]
+    );
   });
 
   describe('FUSDToken', () => {

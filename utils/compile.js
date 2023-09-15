@@ -5,7 +5,7 @@ const FILE_VERSION_TO_COMPILER = {
   '0.4.18': '0.4.26+commit.4563c3fc',
 };
 
-const DEVELOPMENT_VERSION = '0.8.19';
+const DEVELOPMENT_VERSION = '0.8.20';
 
 function getAllFilesInFolder(folderPath) {
   const files = [];

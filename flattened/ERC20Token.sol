@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.4.1 (utils/Context.sol)
 
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 /**
  * @dev Provides information about the current execution context, including the
@@ -33,7 +33,7 @@ abstract contract Context {
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.9.0) (access/Ownable.sol)
 
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 /**
  * @dev Contract module which provides a basic access control mechanism, where
  * there is an account (an owner) that can be granted exclusive access to
@@ -129,7 +129,7 @@ abstract contract Ownable is Context {
 // File contracts/openzeppelin/interfaces/draft-IERC6093.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 /**
  * @dev Standard ERC20 Errors
@@ -297,7 +297,7 @@ interface IERC1155Errors {
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC20/IERC20.sol)
 
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
@@ -379,7 +379,7 @@ interface IERC20 {
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.4.1 (token/ERC20/extensions/IERC20Metadata.sol)
 
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 /**
  * @dev Interface for the optional metadata functions from the ERC20 standard.
@@ -409,7 +409,7 @@ interface IERC20Metadata is IERC20 {
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC20/ERC20.sol)
 
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 
 
@@ -775,7 +775,7 @@ abstract contract ERC20 is Context, IERC20, IERC20Metadata, IERC20Errors {
 // File contracts/ERC20Token.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 contract ERC20Token is ERC20, Ownable {
     uint8 private _decimals;
 

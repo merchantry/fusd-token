@@ -51,11 +51,7 @@ describe('FUSDTokenSale tests', () => {
   beforeEach(async () => {
     accounts = await getAccounts();
     withdrawableAddress = accounts[8];
-    FUSDToken = await deploy(
-      getContract('FUSDToken.sol'),
-      [2, accounts[6]],
-      accounts[0]
-    );
+    FUSDToken = await deploy(getContract('FUSDToken.sol'), [], accounts[0]);
     FUSDTokenSale = await deploy(
       getContract('FUSDTokenSale.sol'),
       [

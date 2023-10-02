@@ -1,6 +1,10 @@
 const Web3 = require('web3');
 const contracts = require('../compile');
-const { useMethodOn, compiledContractMap } = require('../utils/contracts');
+const {
+  useMethodOn,
+  compiledContractMap,
+  useMethodsOn,
+} = require('../utils/contracts');
 const { schedule, everyMinute } = require('../utils/cronJob');
 
 const getContract = compiledContractMap(contracts);
@@ -46,7 +50,11 @@ schedule(everyMinute, async () => {
 
   if (debtorsBelowLT.length === 0) return;
 
-  await useMethodOn(FUSDTokenSale, {
-    method: 'liquidateAllDebtorsBelowLiquidationThreshold',
-  });
+  await useMethodsOn(
+    FUSDTokenSale,
+    debtorsBelowLT.map((debtor) => ({
+      method: 'liquidateUser',
+      args: [debtor],
+    }))
+  );
 });

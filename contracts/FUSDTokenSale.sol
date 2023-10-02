@@ -130,7 +130,8 @@ contract FUSDTokenSale is
 
     /**
      * @dev Returns true if the user's collateral ratio is below the liquidation threshold.
-     * Users flagged by this function will be liquidated when owner calls `liquidateAllDebtorsBelowLiquidationThreshold()`.
+     * This function must return true for a user to be liquidated.
+     * @param debtor Address of the user
      */
     function isDebtorBelowLiquidationThreshold(address debtor) public view override returns (bool) {
         uint256 totalDebt = getTotalDebt(debtor);
@@ -141,10 +142,13 @@ contract FUSDTokenSale is
     }
 
     /**
-     * Liquidates user. Sends all user collateral assets to the ERC20WithdrawableAddress
+     * @dev Liquidates user. Sends all user collateral assets to the ERC20WithdrawableAddress
      * and erases the user's debt. A liquidation event is emitted.
+     * @param user Address of the user
      */
-    function liquidateUser(address user) internal override {
+    function liquidateUser(address user) public onlyOwner {
+        require(isDebtorBelowLiquidationThreshold(user), "FUSDTokenSale: user is not below liquidation threshold");
+
         address erc20WithdrawableAddress = getERC20WithdrawableAddress();
         uint256 totalDebt = getTotalDebt(user);
 

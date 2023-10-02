@@ -1808,6 +1808,7 @@ describe('FUSDTokenSale tests', () => {
     const getLTDropTestCaseParams = ({
       symbol = 'N/A',
       tokenToFallBelowLT,
+      accountToBeLiquidated,
       decimals = 18,
       oracleValue = 1,
       depositAmount = 150,
@@ -1830,7 +1831,7 @@ describe('FUSDTokenSale tests', () => {
           symbol: tokenToFallBelowLT,
           amount: depositAmount,
           loanAmount,
-          account: accounts[1],
+          account: accountToBeLiquidated,
         },
         ...newArray(4, () => ({
           symbol,
@@ -1851,9 +1852,11 @@ describe('FUSDTokenSale tests', () => {
 
     it('flags user as below LT if collateral worth drops due to oracle value dropping', () => {
       const symbol = 'USDT';
+      const accountToBeLiquidated = accounts[1];
 
       const { erc20Params, userDepositsAndLoans } = getLTDropTestCaseParams({
         tokenToFallBelowLT: symbol,
+        accountToBeLiquidated,
       });
 
       const testCases = [
@@ -1895,7 +1898,7 @@ describe('FUSDTokenSale tests', () => {
           useMethodsOn(FUSDTokenSale, [
             {
               method: 'getCollateralRatio',
-              args: [accounts[1]],
+              args: [accountToBeLiquidated],
               onReturn: (collateralRatio) => {
                 // Initially 1 USDT = 1 USD, so collateral ratio is 150%
                 assert.strictEqual(parseInt(collateralRatio), 150 * 10);
@@ -1903,7 +1906,7 @@ describe('FUSDTokenSale tests', () => {
             },
             {
               method: 'isDebtorBelowLiquidationThreshold',
-              args: [accounts[1]],
+              args: [accountToBeLiquidated],
               onReturn: (isBelowLT) => {
                 // Initially the user is not below LT
                 assert.ok(!isBelowLT);
@@ -1930,7 +1933,7 @@ describe('FUSDTokenSale tests', () => {
                       {
                         // We get the user collateral ratio
                         method: 'getCollateralRatio',
-                        args: [accounts[1]],
+                        args: [accountToBeLiquidated],
                         onReturn: (collateralRatio) => {
                           assert.strictEqual(
                             parseInt(collateralRatio),
@@ -1941,7 +1944,7 @@ describe('FUSDTokenSale tests', () => {
                       {
                         // We check if the user is below LT
                         method: 'isDebtorBelowLiquidationThreshold',
-                        args: [accounts[1]],
+                        args: [accountToBeLiquidated],
                         onReturn: (isBelowLT) => {
                           assert.strictEqual(isBelowLT, expectedLT);
                         },
@@ -1956,8 +1959,13 @@ describe('FUSDTokenSale tests', () => {
     it('returns debtors below liquidation threshold', () => {
       const symbol = 'USDT';
       const tokenToFallBelowLT = 'USDC';
+      const accountToBeLiquidated = accounts[1];
       const { erc20Params, userDepositsAndLoans, accountsWithDeposits } =
-        getLTDropTestCaseParams({ symbol, tokenToFallBelowLT });
+        getLTDropTestCaseParams({
+          symbol,
+          tokenToFallBelowLT,
+          accountToBeLiquidated,
+        });
 
       let Oracle;
 
@@ -1986,7 +1994,7 @@ describe('FUSDTokenSale tests', () => {
                   // which should include the account that deposited the token
                   // for which the price dropped and hence their collateral ratio
                   // dropped below LT
-                  assert.deepStrictEqual(debtors, [accounts[1]]);
+                  assert.deepStrictEqual(debtors, [accountToBeLiquidated]);
                 },
               },
               {
@@ -2008,15 +2016,18 @@ describe('FUSDTokenSale tests', () => {
       const loanAmount = 100;
       const depositAmount = 150;
       let tokenContracts = {};
+      let accountToBeLiquidated;
 
       beforeEach(() => {
         // In these tests we want to simulate a user depositing a token
         // for which the price drops and hence their collateral ratio
         // drops below LT. The user should be included in the debtors below LT
         // array
+        accountToBeLiquidated = accounts[1];
         const { erc20Params, userDepositsAndLoans } = getLTDropTestCaseParams({
           symbol,
           tokenToFallBelowLT,
+          accountToBeLiquidated,
           loanAmount,
           depositAmount,
         });
@@ -2046,20 +2057,22 @@ describe('FUSDTokenSale tests', () => {
 
       it('emits an event on liquidation', () =>
         useMethodOn(FUSDTokenSale, {
-          method: 'liquidateAllDebtorsBelowLiquidationThreshold',
+          method: 'liquidateUser',
+          args: [accountToBeLiquidated],
           account: accounts[0],
         }).then(async () => {
           const [{ data, event }] = await getContractEvents(FUSDTokenSale);
           const { user } = data;
           // We check that the event is emitted with the correct user
           assert.strictEqual(event, 'LiquidatedUser');
-          assert.strictEqual(user, accounts[1]);
+          assert.strictEqual(user, accountToBeLiquidated);
         }));
 
       it('erases user debt on liquidation', () =>
         useMethodsOn(FUSDTokenSale, [
           {
-            method: 'liquidateAllDebtorsBelowLiquidationThreshold',
+            method: 'liquidateUser',
+            args: [accountToBeLiquidated],
             account: accounts[0],
           },
           {
@@ -2075,7 +2088,8 @@ describe('FUSDTokenSale tests', () => {
       it('liquidates user collateral', () =>
         useMethodsOn(FUSDTokenSale, [
           {
-            method: 'liquidateAllDebtorsBelowLiquidationThreshold',
+            method: 'liquidateUser',
+            args: [accountToBeLiquidated],
             account: accounts[0],
           },
           {
@@ -2096,7 +2110,8 @@ describe('FUSDTokenSale tests', () => {
       it('user collateral is sent to a withdrawable address', () =>
         useMethodsOn(FUSDTokenSale, [
           {
-            method: 'liquidateAllDebtorsBelowLiquidationThreshold',
+            method: 'liquidateUser',
+            args: [accountToBeLiquidated],
             account: accounts[0],
           },
           {

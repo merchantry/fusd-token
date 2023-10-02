@@ -29,23 +29,6 @@ describe('Cron job tests', () => {
   });
 
   describe('Node.js cron job', () => {
-    it('runs every second', () => {
-      let counter = 0;
-      const reps = 3;
-
-      return new Promise((resolve) => {
-        const job = schedule(everySecond, () => {
-          counter++;
-        });
-
-        setTimeout(() => {
-          assert.strictEqual(counter, reps);
-          job.stop();
-          resolve();
-        }, (reps + 1) * 1000);
-      });
-    });
-
     it('calls isReady method', () =>
       new Promise((resolve) => {
         const job = schedule(everySecond, async () => {

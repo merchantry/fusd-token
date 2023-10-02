@@ -76,17 +76,5 @@ abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler,
         return debtorsBelowLiquidationThreshold;
     }
 
-    /**
-     * @dev Allows the owner to liquidate all users who are below the liquidation threshold.
-     */
-    function liquidateAllDebtorsBelowLiquidationThreshold() public onlyOwner {
-        address[] memory debtorsBelowLiquidationThreshold = getDebtorsBelowLiquidationThreshold();
-        for (uint256 i = 0; i < debtorsBelowLiquidationThreshold.length; i++) {
-            liquidateUser(debtorsBelowLiquidationThreshold[i]);
-        }
-    }
-
     function isDebtorBelowLiquidationThreshold(address debtor) public view virtual returns (bool);
-
-    function liquidateUser(address user) internal virtual;
 }

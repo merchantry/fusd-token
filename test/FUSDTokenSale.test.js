@@ -1316,6 +1316,138 @@ describe('FUSDTokenSale tests', () => {
         );
     });
 
+    it('throws error if user tries to deposit non-approved tokens', async () => {
+      const tokenSymbol = 'USDC';
+      const amountToDeposit = 1000;
+      let errorRaised = false;
+
+      // We simulate a user attempting to deploy a copy erc20 token
+      // to deposit instead of the real one
+      const CopyERC20Token = await deploy(
+        getContract('ERC20Token.sol'),
+        [erc20TokenName, tokenSymbol, erc20TokenDecimals],
+        accounts[0]
+      );
+
+      return setUpMultipleTokenAdapters({
+        [tokenSymbol]: {
+          decimals: erc20TokenDecimals,
+          usdOracleValue: 1 * 10 ** usdValDecimals,
+        },
+      })
+        .then(() =>
+          useMethodsOn(CopyERC20Token, [
+            {
+              // The hacker mints the copy token
+              method: 'mint',
+              args: [accounts[1], amountToDeposit],
+              account: accounts[0],
+            },
+            {
+              // And approves the token sale contract to spend it
+              method: 'approve',
+              args: [FUSDTokenSale.options.address, amountToDeposit],
+              account: accounts[1],
+            },
+          ])
+        )
+        .then(() =>
+          useMethodOn(FUSDTokenSale, {
+            // The hacker tries to deposit the copy token
+            method: 'depositToken',
+            args: [CopyERC20Token.options.address, amountToDeposit],
+            account: accounts[1],
+            catch: (error) => {
+              // We expect an error to be thrown if the user tries to deposit
+              // a token that is not approved
+              assert.strictEqual(error, 'Token adapter does not exist');
+              errorRaised = true;
+            },
+          })
+        )
+        .then(() => {
+          // We check that the error was raised
+          assert.ok(errorRaised);
+        });
+    });
+
+    it('allows users to deposit newly updated token', async () => {
+      const tokenSymbol = 'USDC';
+      const amountToDeposit = 1000;
+
+      const NewERC20Token = await deploy(
+        getContract('ERC20Token.sol'),
+        [erc20TokenName, tokenSymbol, erc20TokenDecimals],
+        accounts[0]
+      );
+
+      return setUpMultipleTokenAdapters({
+        [tokenSymbol]: {
+          decimals: erc20TokenDecimals,
+          usdOracleValue: 1 * 10 ** usdValDecimals,
+        },
+      })
+        .then(() =>
+          useMethodOn(FUSDTokenSale, {
+            method: 'getTokenAdapterAddresses',
+            onReturn: () => {},
+          })
+        )
+        .then(async (tokenAdapterAddresses) => {
+          const tokenAdapterAddress = tokenAdapterAddresses[0];
+
+          const TokenAdapter = await getDeployedContract(
+            getContract('DIAOracleV2TokenAdapter.sol'),
+            tokenAdapterAddress
+          );
+
+          return useMethodOn(TokenAdapter, {
+            // The owner updates the token adapter to use the new token
+            method: 'updateToken',
+            args: [NewERC20Token.options.address],
+            account: accounts[0],
+          });
+        })
+        .then(() =>
+          useMethodsOn(NewERC20Token, [
+            {
+              // We mint the new token to the user
+              method: 'mint',
+              args: [accounts[1], amountToDeposit],
+              account: accounts[0],
+            },
+            {
+              // And approve the token sale contract to spend it
+              method: 'approve',
+              args: [FUSDTokenSale.options.address, amountToDeposit],
+              account: accounts[1],
+            },
+          ])
+        )
+        .then(() =>
+          useMethodsOn(FUSDTokenSale, [
+            {
+              // The user deposits the new token
+              method: 'depositToken',
+              args: [NewERC20Token.options.address, amountToDeposit],
+              account: accounts[1],
+            },
+            {
+              method: 'getUserTokenBalances',
+              args: [accounts[1]],
+              onReturn: (result) => {
+                const deposited = result[0].map((amount) => parseInt(amount));
+                const symbols = result[1];
+
+                // We check that the user deposited the token
+                assert.strictEqual(symbols[0], tokenSymbol);
+                assert.strictEqual(deposited[0], amountToDeposit);
+              },
+            },
+          ])
+        );
+    });
+
     it('returns user total token deposit', () => {
       const { userDeposits, accountsWithDeposits, tokenContracts } =
         getUserDepositParams(symbols);

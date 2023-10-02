@@ -11,7 +11,12 @@ abstract contract TokenAdapterFactory is Ownable {
     bytes32[] private tokenKeys;
 
     modifier tokenAdapterExists(address token) {
-        require(address(tokenAdapters[ERC20Utils.getTokenKey(token)]) != address(0), "Token adapter does not exist");
+        bytes32 tokenKey = ERC20Utils.getTokenKey(token);
+
+        require(
+            address(tokenAdapters[tokenKey]) != address(0) && tokenAdapters[tokenKey].getToken() == token,
+            "Token adapter does not exist"
+        );
         _;
     }
 

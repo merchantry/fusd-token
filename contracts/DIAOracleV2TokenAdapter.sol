@@ -32,7 +32,7 @@ contract DIAOracleV2TokenAdapter is Ownable, TokenAdapter, TokenAdapterInterface
      * @dev Allows the owner to update the oracle address. Oracle must have a value for the token.
      * @param _oracle Address of the oracle
      */
-    function updateOracle(address _oracle) public onlyOwner oracleTracksToken(_oracle, getToken()) {
+    function updateOracle(address _oracle) external onlyOwner oracleTracksToken(_oracle, getToken()) {
         oracle = DIAOracleV2(_oracle);
     }
 
@@ -51,7 +51,7 @@ contract DIAOracleV2TokenAdapter is Ownable, TokenAdapter, TokenAdapterInterface
         return 8;
     }
 
-    function getOracle() public view returns (address) {
+    function getOracle() external view returns (address) {
         return address(oracle);
     }
 

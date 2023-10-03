@@ -35,7 +35,7 @@ abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler,
     /**
      * @dev Returns all users who have outstanding debt.
      */
-    function getCurrentDebtors() public view returns (address[] memory) {
+    function getCurrentDebtors() external view returns (address[] memory) {
         address[] memory allDebtors = getAllDebtors();
         address[] memory currentDebtors = new address[](allDebtors.length);
         uint256 currentDebtorsCount = 0;
@@ -58,7 +58,7 @@ abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler,
      * @dev Returns all users who have outstanding debt and are below the liquidation threshold.
      * All users who are below the liquidation threshold will be liquidated.
      */
-    function getDebtorsBelowLiquidationThreshold() public view returns (address[] memory) {
+    function getDebtorsBelowLiquidationThreshold() external view returns (address[] memory) {
         address[] memory allDebtors = getAllDebtors();
         address[] memory debtorsBelowLiquidationThreshold = new address[](allDebtors.length);
         uint256 debtorsBelowLiquidationThresholdCount = 0;

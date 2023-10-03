@@ -36,7 +36,7 @@ abstract contract FlaggingMinters is Ownable {
      * @dev Returns true if the address is a minter.
      * @param minter Address to check.
      */
-    function isMinter(address minter) public view returns (bool) {
+    function isMinter(address minter) external view returns (bool) {
         return _isMinter[minter];
     }
 }

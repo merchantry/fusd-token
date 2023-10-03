@@ -55,7 +55,7 @@ contract FUSDTokenSale is
         address token,
         uint256 amount,
         uint256 loanAmount
-    ) public {
+    ) external {
         depositToken(token, amount);
         borrowFUSD(loanAmount);
     }
@@ -96,7 +96,7 @@ contract FUSDTokenSale is
      * @dev Allows the user to repay all FUSD debt. The user must have enough FUSD balance
      * and allowance to repay FUSD.
      */
-    function payOffAllDebt() public {
+    function payOffAllDebt() external {
         payOffDebt(getTotalDebt(_msgSender()));
     }
 
@@ -118,7 +118,7 @@ contract FUSDTokenSale is
      * @param token Address of the token to withdraw
      * @param amount Amount of the token to withdraw
      */
-    function withdrawToken(address token, uint256 amount) public collateralRatioSafe(_msgSender()) {
+    function withdrawToken(address token, uint256 amount) external collateralRatioSafe(_msgSender()) {
         _withdrawToken(_msgSender(), token, amount);
     }
 
@@ -127,7 +127,7 @@ contract FUSDTokenSale is
      * is calculated using the total worth of the user's collateral in FUSD and the
      * total debt in FUSD. Then the collateral worth is divided by the total debt
      */
-    function getCollateralRatio(address user) public view returns (uint256) {
+    function getCollateralRatio(address user) external view returns (uint256) {
         return calculateCollateralRatio(getUserCollateralWorthInFUSD(user), getTotalDebt(user));
     }
 
@@ -149,7 +149,7 @@ contract FUSDTokenSale is
      * erases the user's debt and starts a new debt session. A liquidation event is emitted.
      * @param user Address of the user
      */
-    function liquidateUser(address user) public onlyOwner {
+    function liquidateUser(address user) external onlyOwner {
         require(isDebtorBelowLiquidationThreshold(user), "FUSDTokenSale: user is not below liquidation threshold");
 
         address erc20WithdrawableAddress = getERC20WithdrawableAddress();
@@ -220,7 +220,7 @@ contract FUSDTokenSale is
      * below the minimum collateral ratio, returns 0.
      * @param user Address of the user
      */
-    function calculateMaxFUSDToBorrow(address user) public view returns (uint256) {
+    function calculateMaxFUSDToBorrow(address user) external view returns (uint256) {
         uint256 collateralWorthInFUSD = getUserCollateralWorthInFUSD(user);
         uint256 totalDebt = getTotalDebt(user);
         uint256 minCollateralRatio = getMinCollateralRatioForLoanTenthPerc();
@@ -259,7 +259,7 @@ contract FUSDTokenSale is
      * @return symbols Array of symbols. The index of each symbol corresponds to the index of the token in the maxTokensToWithdraw array.
      */
     function calculateMaxTokensToWithdraw(address user)
-        public
+        external
         view
         returns (uint256[] memory maxTokensToWithdraw, string[] memory symbols)
     {

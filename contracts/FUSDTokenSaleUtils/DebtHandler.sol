@@ -42,7 +42,7 @@ abstract contract DebtHandler is InterestCalculator, TimeHandler {
      * 500                    |  5,792,180
      * 1000                   |  11,501,133
      */
-    uint256 public constant DEBT_CHANGES_LIMIT = 400;
+    uint256 private constant DEBT_CHANGES_LIMIT = 400;
 
     modifier belowDebtChangesLimit(address user) {
         require(getNumOfCurrentDebtChanges(user) < DEBT_CHANGES_LIMIT, "DebtHandler: Debt changes limit reached");
@@ -79,7 +79,7 @@ abstract contract DebtHandler is InterestCalculator, TimeHandler {
      * previous sessions. The debt changes are sorted by timestamp. The change
      * can either be a loan or a repayment.
      */
-    function getAllDebtChanges(address user) public view returns (DebtChange[][] memory) {
+    function getAllDebtChanges(address user) external view returns (DebtChange[][] memory) {
         return debtChanges[user];
     }
 

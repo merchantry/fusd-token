@@ -21,7 +21,7 @@ abstract contract StoringERC20WithdrawableAddress is Ownable {
     /**
      * @dev Allows the owner to set the withdrawal address.
      */
-    function setERC20WithdrawableAddress(address _erc20WithdrawableAddress) public onlyOwner {
+    function setERC20WithdrawableAddress(address _erc20WithdrawableAddress) external onlyOwner {
         erc20WithdrawableAddress = _erc20WithdrawableAddress;
     }
 }

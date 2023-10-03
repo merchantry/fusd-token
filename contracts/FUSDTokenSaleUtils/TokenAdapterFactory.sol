@@ -46,7 +46,7 @@ abstract contract TokenAdapterFactory is Ownable {
      * There can be only one adapter per token symbol.
      * @param tokenAdapter Address of the token adapter
      */
-    function addTokenAdapter(address tokenAdapter) public onlyOwner {
+    function addTokenAdapter(address tokenAdapter) external onlyOwner {
         TokenAdapterInterface tokenAdapterInstance = TokenAdapterInterface(tokenAdapter);
         bytes32 tokenKey = ERC20Utils.getTokenKey(tokenAdapterInstance.getToken());
         require(address(tokenAdapters[tokenKey]) == address(0), "Token adapter already exists");
@@ -58,7 +58,7 @@ abstract contract TokenAdapterFactory is Ownable {
     /**
      * @dev Returns addresses of all registered token adapters.
      */
-    function getTokenAdapterAddresses() public view returns (address[] memory) {
+    function getTokenAdapterAddresses() external view returns (address[] memory) {
         address[] memory adapters = new address[](tokenKeys.length);
         for (uint256 i = 0; i < tokenKeys.length; i++) {
             adapters[i] = address(tokenAdapters[tokenKeys[i]]);
@@ -70,7 +70,7 @@ abstract contract TokenAdapterFactory is Ownable {
     /**
      * @dev Returns symbols of all registered tokens.
      */
-    function getTokenSymbols() public view returns (string[] memory) {
+    function getTokenSymbols() external view returns (string[] memory) {
         string[] memory symbols = new string[](tokenKeys.length);
         for (uint256 i = 0; i < tokenKeys.length; i++) {
             symbols[i] = ERC20(tokenAdapters[tokenKeys[i]].getToken()).symbol();

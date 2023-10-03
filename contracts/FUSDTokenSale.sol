@@ -149,7 +149,7 @@ contract FUSDTokenSale is
      * erases the user's debt and starts a new debt session. A liquidation event is emitted.
      * @param user Address of the user
      */
-    function liquidateUser(address user) external onlyOwner {
+    function liquidateUser(address user) external {
         require(isDebtorBelowLiquidationThreshold(user), "FUSDTokenSale: user is not below liquidation threshold");
 
         address erc20WithdrawableAddress = getERC20WithdrawableAddress();

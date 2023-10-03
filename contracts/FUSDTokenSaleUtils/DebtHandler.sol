@@ -19,6 +19,36 @@ abstract contract DebtHandler is InterestCalculator, TimeHandler {
     // user => debt session => debt changes
     mapping(address => DebtChange[][]) private debtChanges;
 
+    /**
+     * The maximum number of debt changes per debt session. This is to prevent
+     * users from racking up too many debt changes in a single session. To
+     * process a debt repayment, we have to calculate the current debt of the user,
+     * which means we have to iterate over all current debt changes. This can be
+     * expensive if the number of debt changes is very high. If the cost
+     * becomes too high, there is a chance that the transaction will run out of
+     * gas and fail.
+     *
+     * Here is some data from testing the gas cost of processing a debt repayment
+     * through the `payOffAllDebt` function in the `FUSDTokenSale` contract. We
+     * tested the gas cost for different numbers of debt changes. For every 2 debt
+     * changes, one is a loan and the other is a repayment:
+     *
+     * Number of debt changes | Gas cost in units
+     * -----------------------|---------
+     * 10                     |  258,043
+     * 50                     |  707,560
+     * 100                    |  1,270,017
+     * 250                    |  2,961,141
+     * 500                    |  5,792,180
+     * 1000                   |  11,501,133
+     */
+    uint256 public constant DEBT_CHANGES_LIMIT = 400;
+
+    modifier belowDebtChangesLimit(address user) {
+        require(getNumOfCurrentDebtChanges(user) < DEBT_CHANGES_LIMIT, "DebtHandler: Debt changes limit reached");
+        _;
+    }
+
     function addNewDebtChange(address user, DebtChange memory change) private {
         uint256 lastChangeIndex = debtChanges[user].length - 1;
         debtChanges[user][lastChangeIndex].push(change);
@@ -66,6 +96,13 @@ abstract contract DebtHandler is InterestCalculator, TimeHandler {
         }
         uint256 lastChangeIndex = debtChanges[user].length - 1;
         return debtChanges[user][lastChangeIndex];
+    }
+
+    /**
+     * @dev Returns the number of debt changes for a user from the most recent session.
+     */
+    function getNumOfCurrentDebtChanges(address user) public view returns (uint256) {
+        return getCurrentDebtChanges(user).length;
     }
 
     /**

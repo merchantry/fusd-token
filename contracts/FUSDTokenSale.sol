@@ -66,7 +66,7 @@ contract FUSDTokenSale is
      * the transaction reverts.
      * @param amount Amount of FUSD to borrow
      */
-    function borrowFUSD(uint256 amount) public collateralRatioSafe(_msgSender()) {
+    function borrowFUSD(uint256 amount) public collateralRatioSafe(_msgSender()) belowDebtChangesLimit(_msgSender()) {
         address user = _msgSender();
 
         registerDebtor(user);
@@ -79,7 +79,7 @@ contract FUSDTokenSale is
      * and allowance to repay FUSD.
      * @param amount Amount of FUSD to repay
      */
-    function payOffDebt(uint256 amount) public {
+    function payOffDebt(uint256 amount) public belowDebtChangesLimit(_msgSender()) {
         address user = _msgSender();
         uint256 totalDebt = getTotalDebt(user);
 

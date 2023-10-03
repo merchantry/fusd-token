@@ -6,6 +6,10 @@ import "../FUSDTokenSaleUtils/DebtHandler.sol";
 contract DebtHandlerTestContract is DebtHandler {
     constructor(uint16 _annualInterestRateTenthPerc) InterestCalculator(_annualInterestRateTenthPerc) {}
 
+    function addNewDebtSession(address user) public {
+        _addNewDebtSession(user);
+    }
+
     function addLoan(
         address user,
         uint256 amount,

@@ -66,9 +66,13 @@ describe('DebtHandler tests', () => {
     const setUpDebtChanges = () => {
       const time = timeInSecs();
 
-      return useMethodsOn(
-        DebtHandler,
-        userDebtChanges.map((debtChange) => ({
+      return useMethodsOn(DebtHandler, [
+        {
+          method: 'addNewDebtSession',
+          args: [accounts[0]],
+          account: accounts[0],
+        },
+        ...userDebtChanges.map((debtChange) => ({
           method: debtChange.amount < 0 ? 'addRepayment' : 'addLoan',
           args: [
             accounts[0],
@@ -80,15 +84,15 @@ describe('DebtHandler tests', () => {
             time - year + debtChange.timestamp,
           ],
           account: accounts[0],
-        }))
-      );
+        })),
+      ]);
     };
 
     it('records debt changes', () =>
       setUpDebtChanges().then(() =>
         useMethodOn(DebtHandler, {
           // We get a list of all debt changes from the contract
-          method: 'getDebtChanges',
+          method: 'getCurrentDebtChanges',
           args: [accounts[0]],
           onReturn: (result) => {
             assert.strictEqual(result.length, userDebtChanges.length);
@@ -104,6 +108,59 @@ describe('DebtHandler tests', () => {
           },
         })
       ));
+
+    describe('addNewDebtSession', () => {
+      beforeEach(() => {
+        let debtLeft = 0;
+
+        return setUpDebtChanges()
+          .then(() =>
+            useMethodOn(DebtHandler, {
+              method: 'getTotalDebt',
+              args: [accounts[0]],
+              onReturn: (totalDebt) => {
+                debtLeft = parseInt(totalDebt);
+              },
+            })
+          )
+          .then(() =>
+            useMethodsOn(DebtHandler, [
+              {
+                method: 'addRepayment',
+                args: [accounts[0], debtLeft, timeInSecs()],
+                account: accounts[0],
+              },
+              {
+                method: 'addNewDebtSession',
+                args: [accounts[0]],
+                account: accounts[0],
+              },
+            ])
+          );
+      });
+
+      it('creates a new empty debt session', () =>
+        useMethodOn(DebtHandler, {
+          method: 'getCurrentDebtChanges',
+          args: [accounts[0]],
+          onReturn: (result) => {
+            assert.strictEqual(result.length, 0);
+          },
+        }));
+
+      it('creates a new debt session', () =>
+        useMethodOn(DebtHandler, {
+          method: 'getAllDebtChanges',
+          args: [accounts[0]],
+          onReturn: (result) => {
+            const firstSession = result[0];
+            const secondSession = result[1];
+
+            assert.strictEqual(firstSession.length, userDebtChanges.length + 1);
+            assert.strictEqual(secondSession.length, 0);
+          },
+        }));
+    });
 
     it('calculates base debt and interest', () =>
       setUpDebtChanges().then(() =>

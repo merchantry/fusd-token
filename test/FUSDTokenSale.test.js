@@ -2052,73 +2052,51 @@ describe('FUSDTokenSale tests', () => {
               ],
               account: accounts[0],
             })
+          )
+          .then(() =>
+            useMethodOn(FUSDTokenSale, {
+              method: 'liquidateUser',
+              args: [accountToBeLiquidated],
+              account: accounts[0],
+            })
           );
       });
 
-      it('emits an event on liquidation', () =>
-        useMethodOn(FUSDTokenSale, {
-          method: 'liquidateUser',
-          args: [accountToBeLiquidated],
-          account: accounts[0],
-        }).then(async () => {
-          const [{ data, event }] = await getContractEvents(FUSDTokenSale);
-          const { user } = data;
-          // We check that the event is emitted with the correct user
-          assert.strictEqual(event, 'LiquidatedUser');
-          assert.strictEqual(user, accountToBeLiquidated);
-        }));
+      it('emits an event on liquidation', async () => {
+        const [{ data, event }] = await getContractEvents(FUSDTokenSale);
+        const { user } = data;
+        // We check that the event is emitted with the correct user
+        assert.strictEqual(event, 'LiquidatedUser');
+        assert.strictEqual(user, accountToBeLiquidated);
+      });
 
       it('erases user debt on liquidation', () =>
-        useMethodsOn(FUSDTokenSale, [
-          {
-            method: 'liquidateUser',
-            args: [accountToBeLiquidated],
-            account: accounts[0],
+        useMethodOn(FUSDTokenSale, {
+          method: 'getTotalDebt',
+          args: [accounts[1]],
+          onReturn: (totalDebt) => {
+            // We check that the user debt has been erased
+            assert.strictEqual(parseInt(totalDebt), 0);
           },
-          {
-            method: 'getTotalDebt',
-            args: [accounts[1]],
-            onReturn: (totalDebt) => {
-              // We check that the user debt has been erased
-              assert.strictEqual(parseInt(totalDebt), 0);
-            },
-          },
-        ]));
+        }));
 
       it('liquidates user collateral', () =>
-        useMethodsOn(FUSDTokenSale, [
-          {
-            method: 'liquidateUser',
-            args: [accountToBeLiquidated],
-            account: accounts[0],
-          },
-          {
-            method: 'getUserTokenBalances',
-            args: [accounts[1]],
-            onReturn: (result) => {
-              const formattedBalances = formatTokenBalances(
-                result[0],
-                result[1]
-              );
+        useMethodsOn(FUSDTokenSale, {
+          method: 'getUserTokenBalances',
+          args: [accounts[1]],
+          onReturn: (result) => {
+            const formattedBalances = formatTokenBalances(result[0], result[1]);
 
-              // We check that the user collateral has been liquidated
-              assert.strictEqual(formattedBalances[tokenToFallBelowLT], 0);
-            },
+            // We check that the user collateral has been liquidated
+            assert.strictEqual(formattedBalances[tokenToFallBelowLT], 0);
           },
-        ]));
+        }));
 
       it('user collateral is sent to a withdrawable address', () =>
-        useMethodsOn(FUSDTokenSale, [
-          {
-            method: 'liquidateUser',
-            args: [accountToBeLiquidated],
-            account: accounts[0],
-          },
-          {
-            method: 'getERC20WithdrawableAddress',
-            onReturn: () => {},
-          },
-        ]).then((withdrawableAddress) =>
+        useMethodOn(FUSDTokenSale, {
+          method: 'getERC20WithdrawableAddress',
+          onReturn: () => {},
+        }).then((withdrawableAddress) =>
           useMethodOn(tokenContracts[tokenToFallBelowLT], {
             method: 'balanceOf',
             args: [withdrawableAddress],
@@ -2128,6 +2106,21 @@ describe('FUSDTokenSale tests', () => {
             },
           })
         ));
+
+      it('creates new debt session', () =>
+        useMethodsOn(FUSDTokenSale, {
+          method: 'getAllDebtChanges',
+          args: [accounts[1]],
+          onReturn: (result) => {
+            const numOfSessions = result.length;
+            const secondSession = result[1];
+
+            // We check that the user has 2 debt sessions
+            assert.strictEqual(numOfSessions, 2);
+            // And that the second session is the one created on liquidation
+            assert.strictEqual(secondSession.length, 0);
+          },
+        }));
     });
   });
 

@@ -69,8 +69,8 @@ contract FUSDTokenSale is
     function borrowFUSD(uint256 amount) public collateralRatioSafe(_msgSender()) {
         address user = _msgSender();
 
-        _addLoan(user, amount, time());
         registerDebtor(user);
+        _addLoan(user, amount, time());
         mintFUSD(user, amount);
     }
 
@@ -83,10 +83,13 @@ contract FUSDTokenSale is
         address user = _msgSender();
         uint256 totalDebt = getTotalDebt(user);
 
+        require(0 < amount, "FUSDTokenSale: amount must be greater than 0");
         require(amount <= totalDebt, "FUSDTokenSale: amount exceeds total debt");
+
         _addRepayment(user, amount, time());
-        address withdrawable = getERC20WithdrawableAddress();
-        transferFUSD(user, withdrawable, amount);
+        if (amount == totalDebt) _addNewDebtSession(user);
+
+        transferFUSD(user, getERC20WithdrawableAddress(), amount);
     }
 
     /**
@@ -142,8 +145,8 @@ contract FUSDTokenSale is
     }
 
     /**
-     * @dev Liquidates user. Sends all user collateral assets to the ERC20WithdrawableAddress
-     * and erases the user's debt. A liquidation event is emitted.
+     * @dev Liquidates user. Sends all user collateral assets to the ERC20WithdrawableAddress,
+     * erases the user's debt and starts a new debt session. A liquidation event is emitted.
      * @param user Address of the user
      */
     function liquidateUser(address user) public onlyOwner {
@@ -156,6 +159,7 @@ contract FUSDTokenSale is
 
         withdrawAllUserAssetsToWithdrawable(user, erc20WithdrawableAddress);
         _addRepayment(user, totalDebt, time());
+        _addNewDebtSession(user);
     }
 
     /**

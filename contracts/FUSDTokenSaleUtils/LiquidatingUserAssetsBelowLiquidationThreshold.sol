@@ -22,6 +22,7 @@ abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler,
 
         debtors.push(debtor);
         debtorRegistered[debtor] = true;
+        _addNewDebtSession(debtor);
     }
 
     /**

@@ -16,14 +16,20 @@ abstract contract DebtHandler is InterestCalculator, TimeHandler {
         uint256 timestamp;
     }
 
-    mapping(address => DebtChange[]) private debtChanges;
+    // user => debt session => debt changes
+    mapping(address => DebtChange[][]) private debtChanges;
+
+    function addNewDebtChange(address user, DebtChange memory change) private {
+        uint256 lastChangeIndex = debtChanges[user].length - 1;
+        debtChanges[user][lastChangeIndex].push(change);
+    }
 
     function _addLoan(
         address user,
         uint256 amount,
         uint256 timestamp
     ) internal {
-        debtChanges[user].push(DebtChange(amount, DebtAction.Loan, timestamp));
+        addNewDebtChange(user, DebtChange(amount, DebtAction.Loan, timestamp));
     }
 
     function _addRepayment(
@@ -31,15 +37,35 @@ abstract contract DebtHandler is InterestCalculator, TimeHandler {
         uint256 amount,
         uint256 timestamp
     ) internal {
-        debtChanges[user].push(DebtChange(amount, DebtAction.Repayment, timestamp));
+        addNewDebtChange(user, DebtChange(amount, DebtAction.Repayment, timestamp));
+    }
+
+    function _addNewDebtSession(address user) internal {
+        debtChanges[user].push();
     }
 
     /**
-     * @dev Returns the debt changes for a user. The debt changes are sorted by timestamp.
+     * @dev Returns all debt changes for a user. This includes debt changes from
+     * previous sessions. The debt changes are sorted by timestamp. The change
+     * can either be a loan or a repayment.
+     */
+    function getAllDebtChanges(address user) public view returns (DebtChange[][] memory) {
+        return debtChanges[user];
+    }
+
+    /**
+     * @dev Returns the debt changes for a user from the most recent session.
+     * If the user has previously build up debt and repaid it in full afterwards,
+     * changes from that period up until the point the debt was repaid will not be
+     * returned by this function. The debt changes are sorted by timestamp.
      * The change can either be a loan or a repayment.
      */
-    function getDebtChanges(address user) public view returns (DebtChange[] memory) {
-        return debtChanges[user];
+    function getCurrentDebtChanges(address user) public view returns (DebtChange[] memory) {
+        if (debtChanges[user].length == 0) {
+            return new DebtChange[](0);
+        }
+        uint256 lastChangeIndex = debtChanges[user].length - 1;
+        return debtChanges[user][lastChangeIndex];
     }
 
     /**
@@ -48,7 +74,7 @@ abstract contract DebtHandler is InterestCalculator, TimeHandler {
      * Each repayment lowers the interest first and then the base debt.
      */
     function calculateBaseDebtAndInterest(address user) public view returns (uint256, uint256) {
-        DebtChange[] memory changes = debtChanges[user];
+        DebtChange[] memory changes = getCurrentDebtChanges(user);
         uint256 baseDebt = 0;
         uint256 totalInterest = 0;
         uint256 lastChangeAt;

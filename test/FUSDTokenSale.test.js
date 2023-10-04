@@ -282,23 +282,23 @@ describe('FUSDTokenSale tests', () => {
     erc20Params = generateERC20Params()
   ) =>
     setUpUserTokens(userDepositsAndLoans, tokenContracts, erc20Params)
-      .then((tokenAddresses) =>
+      .then(() =>
         useMethodOn(FUSDToken, {
           // The owner sets the token sale contract as a minter
           // so it can mint FUSD for users
           method: 'setIsMinter',
           args: [FUSDTokenSale.options.address, true],
           account: accounts[0],
-        }).then(() => tokenAddresses)
+        })
       )
-      .then((tokenAddresses) =>
+      .then(() =>
         useMethodsOn(
           FUSDTokenSale,
           userDepositsAndLoans.map(
             ({ symbol, amount, loanAmount, account }) => ({
               // Each user deposits tokens and borrows FUSD with one method call
               method: 'depositTokenAndBorrowFUSD',
-              args: [tokenAddresses[symbol], amount, loanAmount],
+              args: [symbol, amount, loanAmount],
               account,
             })
           )
@@ -530,19 +530,13 @@ describe('FUSDTokenSale tests', () => {
           {
             // User withdraws tokens
             method: 'withdrawToken',
-            args: [
-              tokenContracts[tokenToWithdraw].options.address,
-              amountToWithdraw,
-            ],
+            args: [tokenToWithdraw, amountToWithdraw],
             account: accounts[1],
           },
           {
             // We get the token balance for the account
             method: 'getUserTokenBalance',
-            args: [
-              accounts[1],
-              tokenContracts[tokenToWithdraw].options.address,
-            ],
+            args: [accounts[1], tokenToWithdraw],
             onReturn: (tokenBalance) => {
               // and check that the balance has been updated correctly
               assert.strictEqual(
@@ -591,10 +585,7 @@ describe('FUSDTokenSale tests', () => {
           useMethodOn(FUSDTokenSale, {
             // User tries to withdraw tokens
             method: 'withdrawToken',
-            args: [
-              tokenContracts[tokenToWithdraw].options.address,
-              amountToWithdraw,
-            ],
+            args: [tokenToWithdraw, amountToWithdraw],
             account: accounts[1],
             catch: (error) => {
               // We expect an error to be thrown if the user tries to withdraw tokens
@@ -1232,12 +1223,12 @@ describe('FUSDTokenSale tests', () => {
      * Users deposit tokens in the token sale contract
      */
     const setUpUserDeposits = (userDeposits, tokenContracts = {}) =>
-      setUpUserTokens(userDeposits, tokenContracts).then((tokenAddresses) =>
+      setUpUserTokens(userDeposits, tokenContracts).then(() =>
         useMethodsOn(
           FUSDTokenSale,
           userDeposits.map(({ symbol, amount, account }) => ({
             method: 'depositToken',
-            args: [tokenAddresses[symbol], amount],
+            args: [symbol, amount],
             account,
           }))
         )
@@ -1316,61 +1307,6 @@ describe('FUSDTokenSale tests', () => {
         );
     });
 
-    it('throws error if user tries to deposit non-approved tokens', async () => {
-      const tokenSymbol = 'USDC';
-      const amountToDeposit = 1000;
-      let errorRaised = false;
-
-      // We simulate a user attempting to deploy a copy erc20 token
-      // to deposit instead of the real one
-      const CopyERC20Token = await deploy(
-        getContract('ERC20Token.sol'),
-        [erc20TokenName, tokenSymbol, erc20TokenDecimals],
-        accounts[0]
-      );
-
-      return setUpMultipleTokenAdapters({
-        [tokenSymbol]: {
-          decimals: erc20TokenDecimals,
-          usdOracleValue: 1 * 10 ** usdValDecimals,
-        },
-      })
-        .then(() =>
-          useMethodsOn(CopyERC20Token, [
-            {
-              // The hacker mints the copy token
-              method: 'mint',
-              args: [accounts[1], amountToDeposit],
-              account: accounts[0],
-            },
-            {
-              // And approves the token sale contract to spend it
-              method: 'approve',
-              args: [FUSDTokenSale.options.address, amountToDeposit],
-              account: accounts[1],
-            },
-          ])
-        )
-        .then(() =>
-          useMethodOn(FUSDTokenSale, {
-            // The hacker tries to deposit the copy token
-            method: 'depositToken',
-            args: [CopyERC20Token.options.address, amountToDeposit],
-            account: accounts[1],
-            catch: (error) => {
-              // We expect an error to be thrown if the user tries to deposit
-              // a token that is not approved
-              assert.strictEqual(error, 'Token adapter does not exist');
-              errorRaised = true;
-            },
-          })
-        )
-        .then(() => {
-          // We check that the error was raised
-          assert.ok(errorRaised);
-        });
-    });
-
     it('allows users to deposit newly updated token', async () => {
       const tokenSymbol = 'USDC';
       const amountToDeposit = 1000;
@@ -1429,7 +1365,7 @@ describe('FUSDTokenSale tests', () => {
             {
               // The user deposits the new token
               method: 'depositToken',
-              args: [NewERC20Token.options.address, amountToDeposit],
+              args: [tokenSymbol, amountToDeposit],
               account: accounts[1],
             },
             {
@@ -1466,7 +1402,7 @@ describe('FUSDTokenSale tests', () => {
         useMethodOn(FUSDTokenSale, {
           // We get the user total token deposit
           method: 'getUserTokenBalance',
-          args: [accountToCheck, tokenContracts[tokenToCheck].options.address],
+          args: [accountToCheck, tokenToCheck],
           onReturn: (balance) => {
             // and check that it matches the expected total deposit
             assert.strictEqual(parseInt(balance), totalDeposit);
@@ -1476,17 +1412,12 @@ describe('FUSDTokenSale tests', () => {
     });
 
     it('throws error if user tries to deposit non-supported token', async () => {
-      const erc20Token = await deploy(
-        getContract('ERC20Token.sol'),
-        [erc20TokenName, 'USDT', erc20TokenDecimals],
-        accounts[0]
-      );
-
+      const nonSupportedTokenSymbol = 'USDT';
       let errorRaised = false;
 
       return useMethodOn(FUSDTokenSale, {
         method: 'depositToken',
-        args: [erc20Token.options.address, 100],
+        args: [nonSupportedTokenSymbol, 100],
         account: accounts[0],
         catch: (error) => {
           // We expect an error to be thrown if the user tries to deposit
@@ -1528,7 +1459,7 @@ describe('FUSDTokenSale tests', () => {
             userDeposits.map(({ symbol, account, amount }) => ({
               // And then withdraws the deposited amount
               method: 'withdrawToken',
-              args: [tokenContracts[symbol].options.address, amount],
+              args: [symbol, amount],
               account,
             }))
           )
@@ -1577,7 +1508,7 @@ describe('FUSDTokenSale tests', () => {
         .then(() =>
           useMethodOn(FUSDTokenSale, {
             method: 'withdrawToken',
-            args: [tokenContracts[symbols[0]].options.address, 2000],
+            args: [symbols[0], 2000],
             account: accounts[0],
             catch: (error) => {
               // We expect an error to be thrown if the user tries to withdraw
@@ -1625,10 +1556,10 @@ describe('FUSDTokenSale tests', () => {
         .then(() =>
           useMethodsOn(
             FUSDTokenSale,
-            Object.entries(tokenContracts).map(([symbol, token]) => ({
+            Object.keys(tokenContracts).map((symbol) => ({
               // We get the token price in FUSD
               method: 'tokenPriceInFUSD',
-              args: [token.options.address, 1],
+              args: [symbol, 1],
               onReturn: (price) => {
                 const { decimals, usdOracleValue } = erc20Params[symbol];
                 const expectedPrice =
@@ -2187,6 +2118,7 @@ describe('FUSDTokenSale tests', () => {
 
     it('can be sent as deposit to FUSDTokenSale', () => {
       const depositAmount = randomInt(1000, 10000);
+      const wTLOSSymbol = 'WTLOS';
 
       return setUpWTLOSTokenAdapter()
         .then(() =>
@@ -2210,7 +2142,7 @@ describe('FUSDTokenSale tests', () => {
             {
               // User deposits wTLOS in the token sale contract
               method: 'depositToken',
-              args: [wTLOS.options.address, depositAmount],
+              args: [wTLOSSymbol, depositAmount],
               account: accounts[0],
             },
             {

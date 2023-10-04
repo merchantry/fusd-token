@@ -10,32 +10,32 @@ abstract contract ERC20ExchangeVault is TokenAdapterFactory {
 
     function _depositToken(
         address user,
-        address token,
+        string memory tokenSymbol,
         uint256 amount
-    ) internal tokenAdapterExists(token) {
-        userTokenBalances[user][ERC20Utils.getTokenKey(token)] += amount;
-        ERC20(token).transferFrom(_msgSender(), address(this), amount);
+    ) internal {
+        userTokenBalances[user][ERC20Utils.getTokenKey(tokenSymbol)] += amount;
+        ERC20(getTokenAdapter(tokenSymbol).getToken()).transferFrom(_msgSender(), address(this), amount);
     }
 
     function _withdrawToken(
         address user,
-        address token,
+        string memory tokenSymbol,
         uint256 amount
-    ) internal tokenAdapterExists(token) {
-        bytes32 tokenKey = ERC20Utils.getTokenKey(token);
+    ) internal {
+        bytes32 tokenKey = ERC20Utils.getTokenKey(tokenSymbol);
         require(userTokenBalances[user][tokenKey] >= amount, "ERC20ExchangeVault: insufficient balance");
 
         userTokenBalances[user][tokenKey] -= amount;
-        ERC20(token).transfer(user, amount);
+        ERC20(getTokenAdapter(tokenSymbol).getToken()).transfer(user, amount);
     }
 
     /**
      * @dev Returns the balance of the user for the specified token. Must provide a token with a valid adapter.
      * @param user Address of the user
-     * @param token Address of the token. Must have a valid adapter.
+     * @param tokenSymbol Symbol of the token
      */
-    function getUserTokenBalance(address user, address token) public view tokenAdapterExists(token) returns (uint256) {
-        return userTokenBalances[user][ERC20Utils.getTokenKey(token)];
+    function getUserTokenBalance(address user, string memory tokenSymbol) public view returns (uint256) {
+        return userTokenBalances[user][ERC20Utils.getTokenKey(tokenSymbol)];
     }
 
     /**

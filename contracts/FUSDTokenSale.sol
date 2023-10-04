@@ -52,11 +52,11 @@ contract FUSDTokenSale is
     }
 
     function depositTokenAndBorrowFUSD(
-        address token,
+        string memory tokenSymbol,
         uint256 amount,
         uint256 loanAmount
     ) external {
-        depositToken(token, amount);
+        depositToken(tokenSymbol, amount);
         borrowFUSD(loanAmount);
     }
 
@@ -104,22 +104,22 @@ contract FUSDTokenSale is
      * @dev Allows the user to deposit tokens as collateral. The user must have enough
      * token balance and allowance to deposit tokens. The token must have a valid
      * adapter, otherwise the transaction reverts.
-     * @param token Address of the token to deposit
+     * @param tokenSymbol Symbol of the token to deposit
      * @param amount Amount of the token to deposit
      */
-    function depositToken(address token, uint256 amount) public {
-        _depositToken(_msgSender(), token, amount);
+    function depositToken(string memory tokenSymbol, uint256 amount) public {
+        _depositToken(_msgSender(), tokenSymbol, amount);
     }
 
     /**
      * @dev Allows the user to withdraw tokens. The user must have sufficient collateral
      * ratio after the transaction for the withdrawal to go through.
      * The token must have a valid adapter, otherwise the transaction reverts.
-     * @param token Address of the token to withdraw
+     * @param tokenSymbol Symbol of the token to withdraw
      * @param amount Amount of the token to withdraw
      */
-    function withdrawToken(address token, uint256 amount) external collateralRatioSafe(_msgSender()) {
-        _withdrawToken(_msgSender(), token, amount);
+    function withdrawToken(string memory tokenSymbol, uint256 amount) external collateralRatioSafe(_msgSender()) {
+        _withdrawToken(_msgSender(), tokenSymbol, amount);
     }
 
     /**

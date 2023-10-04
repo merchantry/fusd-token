@@ -10,14 +10,11 @@ abstract contract TokenAdapterFactory is Ownable {
     mapping(bytes32 => TokenAdapterInterface) private tokenAdapters;
     bytes32[] private tokenKeys;
 
-    modifier tokenAdapterExists(address token) {
-        bytes32 tokenKey = ERC20Utils.getTokenKey(token);
+    function getTokenAdapter(string memory tokenSymbol) internal view returns (TokenAdapterInterface) {
+        bytes32 tokenKey = ERC20Utils.getTokenKey(tokenSymbol);
+        require(address(tokenAdapters[tokenKey]) != address(0), "Token adapter does not exist");
 
-        require(
-            address(tokenAdapters[tokenKey]) != address(0) && tokenAdapters[tokenKey].getToken() == token,
-            "Token adapter does not exist"
-        );
-        _;
+        return tokenAdapters[tokenKey];
     }
 
     function getTokenKeys() internal view returns (bytes32[] memory) {
@@ -33,12 +30,12 @@ abstract contract TokenAdapterFactory is Ownable {
         return adapters;
     }
 
-    function getOracleValue(address token) internal view tokenAdapterExists(token) returns (uint128) {
-        return tokenAdapters[ERC20Utils.getTokenKey(token)].getOracleValue();
+    function getOracleValue(string memory tokenSymbol) internal view returns (uint128) {
+        return getTokenAdapter(tokenSymbol).getOracleValue();
     }
 
-    function getOracleDecimals(address token) internal view returns (uint8) {
-        return tokenAdapters[ERC20Utils.getTokenKey(token)].decimals();
+    function getOracleDecimals(string memory tokenSymbol) internal view returns (uint8) {
+        return getTokenAdapter(tokenSymbol).decimals();
     }
 
     /**
@@ -48,7 +45,7 @@ abstract contract TokenAdapterFactory is Ownable {
      */
     function addTokenAdapter(address tokenAdapter) external onlyOwner {
         TokenAdapterInterface tokenAdapterInstance = TokenAdapterInterface(tokenAdapter);
-        bytes32 tokenKey = ERC20Utils.getTokenKey(tokenAdapterInstance.getToken());
+        bytes32 tokenKey = ERC20Utils.getTokenKey(ERC20(tokenAdapterInstance.getToken()).symbol());
         require(address(tokenAdapters[tokenKey]) == address(0), "Token adapter already exists");
 
         tokenAdapters[tokenKey] = tokenAdapterInstance;

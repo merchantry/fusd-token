@@ -13,7 +13,7 @@ abstract contract TokenAdapter {
 
     function _updateToken(address _token) internal {
         require(
-            ERC20Utils.getTokenKey(_token) == ERC20Utils.getTokenKey(address(token)),
+            ERC20Utils.getTokenKey(ERC20(_token).symbol()) == ERC20Utils.getTokenKey(token.symbol()),
             "Token adapter: invalid token symbol"
         );
 

@@ -37,13 +37,13 @@ abstract contract FUSDTokenHandler is ERC20ExchangeVault {
     /**
      * @dev Calculates the price of the token in FUSD.
      * Must provide a token with a valid adapter, otherwise reverts.
-     * @param token Address of the token. Must have a valid adapter.
+     * @param tokenSymbol Symbol of the token
      * @param amount Amount of the token
      */
-    function tokenPriceInFUSD(address token, uint256 amount) public view returns (uint256) {
-        uint128 priceInUsd = getOracleValue(token);
-        int16 usdPriceDecimals = getOracleDecimals(token).toInt();
-        int16 tokenDecimals = ERC20(token).decimals().toInt();
+    function tokenPriceInFUSD(string memory tokenSymbol, uint256 amount) public view returns (uint256) {
+        uint128 priceInUsd = getOracleValue(tokenSymbol);
+        int16 usdPriceDecimals = getOracleDecimals(tokenSymbol).toInt();
+        int16 tokenDecimals = ERC20(getTokenAdapter(tokenSymbol).getToken()).decimals().toInt();
         int16 fusdDecimals = fusdToken.decimals().toInt();
 
         return Math.multiplyByTenPow(amount * priceInUsd, fusdDecimals - usdPriceDecimals - tokenDecimals);
@@ -61,10 +61,10 @@ abstract contract FUSDTokenHandler is ERC20ExchangeVault {
         uint256 collateralWorth = 0;
 
         for (uint256 i = 0; i < tokenKeys.length; i++) {
-            address tokenAddress = tokenAdapters[i].getToken();
-            uint256 tokenBalance = getUserTokenBalance(user, tokenAddress);
+            string memory tokenSymbol = ERC20(tokenAdapters[i].getToken()).symbol();
+            uint256 tokenBalance = getUserTokenBalance(user, tokenSymbol);
             if (tokenBalance > 0) {
-                collateralWorth += tokenPriceInFUSD(tokenAddress, tokenBalance);
+                collateralWorth += tokenPriceInFUSD(tokenSymbol, tokenBalance);
             }
         }
 

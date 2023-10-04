@@ -3,7 +3,7 @@
 // File contracts/libraries/StringUtils.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 library StringUtils {
     function compare(string memory a, string memory b) internal pure returns (bool) {
@@ -17,7 +17,7 @@ library StringUtils {
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.4.1 (utils/Context.sol)
 
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 /**
  * @dev Provides information about the current execution context, including the
@@ -45,7 +45,7 @@ abstract contract Context {
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.9.0) (access/Ownable.sol)
 
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 /**
  * @dev Contract module which provides a basic access control mechanism, where
  * there is an account (an owner) that can be granted exclusive access to
@@ -141,7 +141,7 @@ abstract contract Ownable is Context {
 // File contracts/openzeppelin/interfaces/draft-IERC6093.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 /**
  * @dev Standard ERC20 Errors
@@ -309,7 +309,7 @@ interface IERC1155Errors {
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC20/IERC20.sol)
 
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
@@ -391,7 +391,7 @@ interface IERC20 {
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.4.1 (token/ERC20/extensions/IERC20Metadata.sol)
 
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 /**
  * @dev Interface for the optional metadata functions from the ERC20 standard.
@@ -421,7 +421,7 @@ interface IERC20Metadata is IERC20 {
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC20/ERC20.sol)
 
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 
 
@@ -787,7 +787,7 @@ abstract contract ERC20 is Context, IERC20, IERC20Metadata, IERC20Errors {
 // File contracts/oracles/DIAOracleV2.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 contract DIAOracleV2 {
     mapping(string => uint256) public values;
@@ -829,13 +829,14 @@ contract DIAOracleV2 {
 // File contracts/libraries/ERC20Utils.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
+
 library ERC20Utils {
     /**
      * @dev Returns the token key by hashing the token symbol.
      */
-    function getTokenKey(address token) internal view returns (bytes32) {
-        return keccak256(bytes(ERC20(token).symbol()));
+    function getTokenKey(string memory tokenSymbol) internal pure returns (bytes32) {
+        return keccak256(bytes(tokenSymbol));
     }
 }
 
@@ -843,7 +844,7 @@ library ERC20Utils {
 // File contracts/TokenAdapterUtils/TokenAdapter.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 abstract contract TokenAdapter {
     ERC20 private token;
 
@@ -853,7 +854,7 @@ abstract contract TokenAdapter {
 
     function _updateToken(address _token) internal {
         require(
-            ERC20Utils.getTokenKey(_token) == ERC20Utils.getTokenKey(address(token)),
+            ERC20Utils.getTokenKey(ERC20(_token).symbol()) == ERC20Utils.getTokenKey(token.symbol()),
             "Token adapter: invalid token symbol"
         );
 
@@ -869,7 +870,7 @@ abstract contract TokenAdapter {
 // File contracts/TokenAdapterUtils/TokenAdapterInterface.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 interface TokenAdapterInterface {
     function decimals() external view returns (uint8);
@@ -885,7 +886,7 @@ interface TokenAdapterInterface {
 // File contracts/DIAOracleV2wTLOSAdapter.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 contract DIAOracleV2wTLOSAdapter is Ownable, TokenAdapter, TokenAdapterInterface {
     DIAOracleV2 private oracle;
 

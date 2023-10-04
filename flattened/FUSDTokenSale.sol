@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.4.1 (utils/Context.sol)
 
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 /**
  * @dev Provides information about the current execution context, including the
@@ -33,7 +33,7 @@ abstract contract Context {
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.9.0) (access/Ownable.sol)
 
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 /**
  * @dev Contract module which provides a basic access control mechanism, where
  * there is an account (an owner) that can be granted exclusive access to
@@ -129,7 +129,7 @@ abstract contract Ownable is Context {
 // File contracts/FUSDTokenUtils/FlaggingMinters.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 abstract contract FlaggingMinters is Ownable {
     mapping(address => bool) private _isMinter;
 
@@ -172,7 +172,7 @@ abstract contract FlaggingMinters is Ownable {
 // File contracts/openzeppelin/interfaces/draft-IERC6093.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 /**
  * @dev Standard ERC20 Errors
@@ -340,7 +340,7 @@ interface IERC1155Errors {
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC20/IERC20.sol)
 
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
@@ -422,7 +422,7 @@ interface IERC20 {
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.4.1 (token/ERC20/extensions/IERC20Metadata.sol)
 
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 /**
  * @dev Interface for the optional metadata functions from the ERC20 standard.
@@ -452,7 +452,7 @@ interface IERC20Metadata is IERC20 {
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.9.0) (token/ERC20/ERC20.sol)
 
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 
 
@@ -818,7 +818,7 @@ abstract contract ERC20 is Context, IERC20, IERC20Metadata, IERC20Errors {
 // File contracts/FUSDToken.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 
 contract FUSDToken is ERC20, FlaggingMinters {
@@ -833,13 +833,14 @@ contract FUSDToken is ERC20, FlaggingMinters {
 // File contracts/libraries/ERC20Utils.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
+
 library ERC20Utils {
     /**
      * @dev Returns the token key by hashing the token symbol.
      */
-    function getTokenKey(address token) internal view returns (bytes32) {
-        return keccak256(bytes(ERC20(token).symbol()));
+    function getTokenKey(string memory tokenSymbol) internal pure returns (bytes32) {
+        return keccak256(bytes(tokenSymbol));
     }
 }
 
@@ -847,7 +848,7 @@ library ERC20Utils {
 // File contracts/TokenAdapterUtils/TokenAdapterInterface.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 interface TokenAdapterInterface {
     function decimals() external view returns (uint8);
@@ -863,19 +864,16 @@ interface TokenAdapterInterface {
 // File contracts/FUSDTokenSaleUtils/TokenAdapterFactory.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 abstract contract TokenAdapterFactory is Ownable {
     mapping(bytes32 => TokenAdapterInterface) private tokenAdapters;
     bytes32[] private tokenKeys;
 
-    modifier tokenAdapterExists(address token) {
-        bytes32 tokenKey = ERC20Utils.getTokenKey(token);
+    function getTokenAdapter(string memory tokenSymbol) internal view returns (TokenAdapterInterface) {
+        bytes32 tokenKey = ERC20Utils.getTokenKey(tokenSymbol);
+        require(address(tokenAdapters[tokenKey]) != address(0), "Token adapter does not exist");
 
-        require(
-            address(tokenAdapters[tokenKey]) != address(0) && tokenAdapters[tokenKey].getToken() == token,
-            "Token adapter does not exist"
-        );
-        _;
+        return tokenAdapters[tokenKey];
     }
 
     function getTokenKeys() internal view returns (bytes32[] memory) {
@@ -891,12 +889,12 @@ abstract contract TokenAdapterFactory is Ownable {
         return adapters;
     }
 
-    function getOracleValue(address token) internal view tokenAdapterExists(token) returns (uint128) {
-        return tokenAdapters[ERC20Utils.getTokenKey(token)].getOracleValue();
+    function getOracleValue(string memory tokenSymbol) internal view returns (uint128) {
+        return getTokenAdapter(tokenSymbol).getOracleValue();
     }
 
-    function getOracleDecimals(address token) internal view returns (uint8) {
-        return tokenAdapters[ERC20Utils.getTokenKey(token)].decimals();
+    function getOracleDecimals(string memory tokenSymbol) internal view returns (uint8) {
+        return getTokenAdapter(tokenSymbol).decimals();
     }
 
     /**
@@ -906,7 +904,7 @@ abstract contract TokenAdapterFactory is Ownable {
      */
     function addTokenAdapter(address tokenAdapter) external onlyOwner {
         TokenAdapterInterface tokenAdapterInstance = TokenAdapterInterface(tokenAdapter);
-        bytes32 tokenKey = ERC20Utils.getTokenKey(tokenAdapterInstance.getToken());
+        bytes32 tokenKey = ERC20Utils.getTokenKey(ERC20(tokenAdapterInstance.getToken()).symbol());
         require(address(tokenAdapters[tokenKey]) == address(0), "Token adapter already exists");
 
         tokenAdapters[tokenKey] = tokenAdapterInstance;
@@ -942,38 +940,38 @@ abstract contract TokenAdapterFactory is Ownable {
 // File contracts/FUSDTokenSaleUtils/ERC20ExchangeVault.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 abstract contract ERC20ExchangeVault is TokenAdapterFactory {
     mapping(address => mapping(bytes32 => uint256)) private userTokenBalances;
 
     function _depositToken(
         address user,
-        address token,
+        string memory tokenSymbol,
         uint256 amount
-    ) internal tokenAdapterExists(token) {
-        userTokenBalances[user][ERC20Utils.getTokenKey(token)] += amount;
-        ERC20(token).transferFrom(_msgSender(), address(this), amount);
+    ) internal {
+        userTokenBalances[user][ERC20Utils.getTokenKey(tokenSymbol)] += amount;
+        ERC20(getTokenAdapter(tokenSymbol).getToken()).transferFrom(_msgSender(), address(this), amount);
     }
 
     function _withdrawToken(
         address user,
-        address token,
+        string memory tokenSymbol,
         uint256 amount
-    ) internal tokenAdapterExists(token) {
-        bytes32 tokenKey = ERC20Utils.getTokenKey(token);
+    ) internal {
+        bytes32 tokenKey = ERC20Utils.getTokenKey(tokenSymbol);
         require(userTokenBalances[user][tokenKey] >= amount, "ERC20ExchangeVault: insufficient balance");
 
         userTokenBalances[user][tokenKey] -= amount;
-        ERC20(token).transfer(user, amount);
+        ERC20(getTokenAdapter(tokenSymbol).getToken()).transfer(user, amount);
     }
 
     /**
      * @dev Returns the balance of the user for the specified token. Must provide a token with a valid adapter.
      * @param user Address of the user
-     * @param token Address of the token. Must have a valid adapter.
+     * @param tokenSymbol Symbol of the token
      */
-    function getUserTokenBalance(address user, address token) public view tokenAdapterExists(token) returns (uint256) {
-        return userTokenBalances[user][ERC20Utils.getTokenKey(token)];
+    function getUserTokenBalance(address user, string memory tokenSymbol) public view returns (uint256) {
+        return userTokenBalances[user][ERC20Utils.getTokenKey(tokenSymbol)];
     }
 
     /**
@@ -1017,7 +1015,7 @@ abstract contract ERC20ExchangeVault is TokenAdapterFactory {
 // File contracts/libraries/Math.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 library Math {
     function abs(int256 x) internal pure returns (uint256) {
@@ -1046,7 +1044,7 @@ library Math {
 // File contracts/libraries/TransformUintToInt.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 library TransformUintToInt {
     function toInt(uint8 x) internal pure returns (int16) {
@@ -1058,7 +1056,7 @@ library TransformUintToInt {
 // File contracts/FUSDTokenSaleUtils/FUSDTokenHandler.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 abstract contract FUSDTokenHandler is ERC20ExchangeVault {
     using TransformUintToInt for uint8;
 
@@ -1090,13 +1088,13 @@ abstract contract FUSDTokenHandler is ERC20ExchangeVault {
     /**
      * @dev Calculates the price of the token in FUSD.
      * Must provide a token with a valid adapter, otherwise reverts.
-     * @param token Address of the token. Must have a valid adapter.
+     * @param tokenSymbol Symbol of the token
      * @param amount Amount of the token
      */
-    function tokenPriceInFUSD(address token, uint256 amount) public view returns (uint256) {
-        uint128 priceInUsd = getOracleValue(token);
-        int16 usdPriceDecimals = getOracleDecimals(token).toInt();
-        int16 tokenDecimals = ERC20(token).decimals().toInt();
+    function tokenPriceInFUSD(string memory tokenSymbol, uint256 amount) public view returns (uint256) {
+        uint128 priceInUsd = getOracleValue(tokenSymbol);
+        int16 usdPriceDecimals = getOracleDecimals(tokenSymbol).toInt();
+        int16 tokenDecimals = ERC20(getTokenAdapter(tokenSymbol).getToken()).decimals().toInt();
         int16 fusdDecimals = fusdToken.decimals().toInt();
 
         return Math.multiplyByTenPow(amount * priceInUsd, fusdDecimals - usdPriceDecimals - tokenDecimals);
@@ -1114,10 +1112,10 @@ abstract contract FUSDTokenHandler is ERC20ExchangeVault {
         uint256 collateralWorth = 0;
 
         for (uint256 i = 0; i < tokenKeys.length; i++) {
-            address tokenAddress = tokenAdapters[i].getToken();
-            uint256 tokenBalance = getUserTokenBalance(user, tokenAddress);
+            string memory tokenSymbol = ERC20(tokenAdapters[i].getToken()).symbol();
+            uint256 tokenBalance = getUserTokenBalance(user, tokenSymbol);
             if (tokenBalance > 0) {
-                collateralWorth += tokenPriceInFUSD(tokenAddress, tokenBalance);
+                collateralWorth += tokenPriceInFUSD(tokenSymbol, tokenBalance);
             }
         }
 
@@ -1129,7 +1127,7 @@ abstract contract FUSDTokenHandler is ERC20ExchangeVault {
 // File contracts/FUSDTokenSaleUtils/InterestCalculator.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 abstract contract InterestCalculator {
     // Each point of annualInterestRateTenthPercent represents 0.1% of annual interest rate.
@@ -1174,7 +1172,7 @@ abstract contract InterestCalculator {
 // File contracts/FUSDTokenSaleUtils/CollateralRatioCalculator.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 abstract contract CollateralRatioCalculator {
     uint256 private minCollateralRatioForLoanTenthPerc;
@@ -1241,7 +1239,7 @@ abstract contract CollateralRatioCalculator {
 // File contracts/FUSDTokenSaleUtils/TimeHandler.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 abstract contract TimeHandler {
     function time() internal view returns (uint256) {
@@ -1253,7 +1251,7 @@ abstract contract TimeHandler {
 // File contracts/FUSDTokenSaleUtils/DebtHandler.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 
 abstract contract DebtHandler is InterestCalculator, TimeHandler {
@@ -1415,7 +1413,7 @@ abstract contract DebtHandler is InterestCalculator, TimeHandler {
 // File contracts/FUSDTokenSaleUtils/LiquidatingUserAssetsBelowLiquidationThreshold.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 
 abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler, CollateralRatioCalculator, Ownable {
@@ -1498,7 +1496,7 @@ abstract contract LiquidatingUserAssetsBelowLiquidationThreshold is DebtHandler,
 // File contracts/FUSDTokenSaleUtils/StoringERC20WithdrawableAddress.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 abstract contract StoringERC20WithdrawableAddress is Ownable {
     address private erc20WithdrawableAddress;
@@ -1527,7 +1525,7 @@ abstract contract StoringERC20WithdrawableAddress is Ownable {
 // File contracts/FUSDTokenSale.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 contract FUSDTokenSale is
     FUSDTokenHandler,
     LiquidatingUserAssetsBelowLiquidationThreshold,
@@ -1573,11 +1571,11 @@ contract FUSDTokenSale is
     }
 
     function depositTokenAndBorrowFUSD(
-        address token,
+        string memory tokenSymbol,
         uint256 amount,
         uint256 loanAmount
     ) external {
-        depositToken(token, amount);
+        depositToken(tokenSymbol, amount);
         borrowFUSD(loanAmount);
     }
 
@@ -1625,22 +1623,22 @@ contract FUSDTokenSale is
      * @dev Allows the user to deposit tokens as collateral. The user must have enough
      * token balance and allowance to deposit tokens. The token must have a valid
      * adapter, otherwise the transaction reverts.
-     * @param token Address of the token to deposit
+     * @param tokenSymbol Symbol of the token to deposit
      * @param amount Amount of the token to deposit
      */
-    function depositToken(address token, uint256 amount) public {
-        _depositToken(_msgSender(), token, amount);
+    function depositToken(string memory tokenSymbol, uint256 amount) public {
+        _depositToken(_msgSender(), tokenSymbol, amount);
     }
 
     /**
      * @dev Allows the user to withdraw tokens. The user must have sufficient collateral
      * ratio after the transaction for the withdrawal to go through.
      * The token must have a valid adapter, otherwise the transaction reverts.
-     * @param token Address of the token to withdraw
+     * @param tokenSymbol Symbol of the token to withdraw
      * @param amount Amount of the token to withdraw
      */
-    function withdrawToken(address token, uint256 amount) external collateralRatioSafe(_msgSender()) {
-        _withdrawToken(_msgSender(), token, amount);
+    function withdrawToken(string memory tokenSymbol, uint256 amount) external collateralRatioSafe(_msgSender()) {
+        _withdrawToken(_msgSender(), tokenSymbol, amount);
     }
 
     /**
@@ -1670,7 +1668,7 @@ contract FUSDTokenSale is
      * erases the user's debt and starts a new debt session. A liquidation event is emitted.
      * @param user Address of the user
      */
-    function liquidateUser(address user) external {
+    function liquidateUser(address user) external onlyOwner {
         require(isDebtorBelowLiquidationThreshold(user), "FUSDTokenSale: user is not below liquidation threshold");
 
         address erc20WithdrawableAddress = getERC20WithdrawableAddress();

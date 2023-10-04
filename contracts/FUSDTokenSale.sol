@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.21;
 
 import "./FUSDTokenSaleUtils/FUSDTokenHandler.sol";
 import "./FUSDTokenSaleUtils/LiquidatingUserAssetsBelowLiquidationThreshold.sol";
